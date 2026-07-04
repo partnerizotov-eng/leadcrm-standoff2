@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Лиды{% endblock %}
+
+{% block content %}
+<h1>📋 {{ 'Все лиды' if is_admin else 'Мои лиды' }}</h1>
+
+<div class="tip">
+  💡 Нашли игрока Standoff 2? Добавьте его и привяжите игровой ID.
+  <br>
+  📌 <strong>Формат ссылки VK:</strong> vk.com/id123, vk.com/username или просто id123
+</div>
+
+<div class="grid-2" style="margin:16px 0;">
+  <!-- Добавление одного лида -->
+  <div class="card">
+    <h2>➕ Добавить лида</h2>
+    <form method="post" action="{{ url_for('leads.add') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field">
+        <span>Ссылка на профиль ВК</span>
+        <input type="text" name="vk_url" placeholder="vk.com/id12345 или vk.com/username" required>
+        <span style="font-size:11px;color:var(--muted);margin-top:4px;display:block;">
+          ✅ Примеры: vk.com/id123, vk.com/durov, id12345
+        </span>
+      </label>
+      <label class="field">
+        <span>Имя</span>
+        <input type="text" name="name" placeholder="Опционально">
+      </label>
+      <label class="field">
+        <span>Группа-источник</span>
+        <input type="text" name="source_group" placeholder="Название группы Standoff 2">
+      </label>
+      <button class="btn btn-primary" type="submit">➕ Добавить</button>
+    </form>
+  </div>
+
+  <!-- Массовый импорт (только для админа) -->
+  {% if is_admin %}
+  <div class="card" style="border-color:var(--gold);">
+    <h2>📦 Массовый импорт лидов</h2>
+    <div class="tip-warning" style="font-size:12px;padding:6px 10px;margin-bottom:10px;">
+      ⚠️ Вставьте список ссылок VK (по одной на строку). 
+      <br>Лиды будут распределены между менеджерами.
+    </div>
+    <form method="post" action="{{ url_for('leads.bulk_import_route') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field">
+        <span>Ссылки (по одной на строку)</span>
+        <textarea name="profiles" rows="6" placeholder="vk.com/id123&#10;vk.com/id456&#10;vk.com/username" required></textarea>
+        <span style="font-size:11px;color:var(--muted);margin-top:4px;display:block;">
+          📌 Формат: vk.com/id123, vk.com/username или просто id123
+        </span>
+      </label>
+      <label class="field">
+        <span>Группа-источник</span>
+        <input type="text" name="source_group" placeholder="Название группы Standoff 2">
+      </label>
+      <label class="field">
+        <span>Назначить менеджеру</span>
+        <select name="manager_id">
+          <option value="">🔄 Автоматически (round-robin)</option>
+          <option value="0">👤 Назначить себе (админу)</option>
+          {% for m in managers %}
+          <option value="{{ m.id }}">👤 {{ m.name }}</option>
+          {% endfor %}
+        </select>
+        <span style="font-size:11px;color:var(--muted);margin-top:4px;display:block;">
+          💡 Если не выбрано - лиды распределяются автоматически между активными менеджерами
+        </span>
+      </label>
+      <button class="btn btn-gold" type="submit">📦 Импортировать</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Список лидов -->
+<div class="card">
+  <h2>📋 Список лидов</h2>
+  {% if leads %}
+  <table>
+    <thead>
+      <tr>
+        <th>Имя / VK</th>
+        <th>Статус</th>
+        <th>Баланс</th>
+        <th>Game ID</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in leads %}
+      <tr>
+        <td>
+          <strong>{{ l.name or l.vk_id }}</strong>
+          <br><span class="muted" style="font-size:11px;">{{ l.source_group }}</span>
+          <br><a href="{{ vk_chat_url(l.vk_id) }}" target="_blank" class="btn btn-soft btn-sm" style="margin-top:4px;">💬 Написать</a>
+        </td>
+        <td><span class="badge badge-{{ l.status }}">{{ status_labels[l.status] }}</span></td>
+        <td><span class="balance-pill">{{ "%.2f"|format(l.balance) }}G</span></td>
+        <td>
+          {% if l.game_id %}
+            <code style="background:#0d0f14;padding:2px 6px;border-radius:4px;font-size:12px;">{{ l.game_id[:12] }}...</code>
+            {% if l.game_verified %}<br><span class="badge badge-joined_channel" style="font-size:10px;">✅ Верифицирован</span>{% endif %}
+            {% if l.game_rank %}<br><span class="muted" style="font-size:10px;">Ранг: {{ l.game_rank }}</span>{% endif %}
+          {% else %}
+            <span class="muted" style="font-size:11px;">Не привязан</span>
+          {% endif %}
+        </td>
+        <td>
+          <details>
+            <summary class="btn btn-soft btn-sm" style="display:inline-block;cursor:pointer;">⚡ Действия</summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:10px;min-width:300px;">
+              
+              <!-- Смена статуса -->
+              <form method="post" action="{{ url_for('leads.update_status', lead_id=l.id) }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <select name="status">
+                  {% for s in statuses %}
+                  <option value="{{ s }}" {{ 'selected' if l.status == s }}>{{ status_labels[s] }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-soft btn-sm" type="submit">Обновить</button>
+              </form>
+
+              <!-- Привязка игрового ID -->
+              {% if not l.game_id %}
+              <form method="post" action="{{ url_for('game.verify_player', lead_id=l.id) }}" class="inline" style="border-top:1px solid var(--border);padding-top:8px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="game_id" placeholder="Game ID Standoff 2" style="width:140px;" required>
+                <button class="btn btn-primary btn-sm" type="submit">🔗 Привязать</button>
+              </form>
+              {% endif %}
+
+              <!-- Вывод голды -->
+              {% if l.game_id and l.balance >= 10 %}
+              <div style="border-top:1px solid var(--border);padding-top:8px;background:rgba(255,215,0,0.05);border-radius:8px;padding:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                  <strong style="color:var(--gold);">🎮 Вывод в Standoff 2</strong>
+                  <span class="badge badge-new" style="font-size:10px;">Доступно: {{ "%.2f"|format(l.balance) }}G</span>
+                </div>
+                <form method="post" action="{{ url_for('game.withdraw_gold', lead_id=l.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <div style="flex:1;min-width:120px;">
+                      <label class="field" style="margin-bottom:0;font-size:12px;">
+                        <span>Сумма (G)</span>
+                        <input type="number" name="amount" step="0.01" min="10" max="{{ l.balance }}" placeholder="10" required oninput="calculatePrice(this.value, 'price-{{ l.id }}')">
+                      </label>
+                    </div>
+                    <div style="flex:1;min-width:120px;">
+                      <label class="field" style="margin-bottom:0;font-size:12px;">
+                        <span>Цена (G)</span>
+                        <input type="text" id="price-{{ l.id }}" readonly style="width:100%;color:var(--gold);font-weight:bold;background:rgba(255,215,0,0.1);" placeholder="Сумма × 1.2">
+                      </label>
+                    </div>
+                    <button class="btn btn-gold btn-sm" type="submit" style="margin-top:4px;">🎮 Вывести</button>
+                  </div>
+                </form>
+                <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+                  💡 Выставьте скин за рассчитанную цену (сумма + 20%)
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Заявка на проверку -->
+              <form method="post" action="{{ url_for('submissions.create', lead_id=l.id) }}" enctype="multipart/form-data" style="border-top:1px solid var(--border);padding-top:8px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="tip-warning" style="margin-bottom:6px;padding:6px 10px;font-size:12px;">
+                  ⚠️ Прикрепите скриншот с ID в комментариях. При ошибке - штраф 1G!
+                </div>
+                <select name="round_slot" style="margin-bottom:6px;">
+                  <option value="12:00">12:00</option>
+                  <option value="18:00">18:00</option>
+                  <option value="00:00">00:00</option>
+                </select>
+                <input type="file" name="screenshot" accept="image/*" required style="margin-bottom:6px;">
+                <button class="btn btn-primary btn-sm" type="submit">📸 Отправить на проверку</button>
+              </form>
+
+              {% if is_admin %}
+              <form method="post" action="{{ url_for('leads.adjust_balance', lead_id=l.id) }}" class="inline" style="border-top:1px solid var(--border);padding-top:8px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="number" name="amount" step="0.01" placeholder="+10 / -5" style="width:90px;">
+                <input type="text" name="note" placeholder="причина" style="width:100px;">
+                <button class="btn btn-soft btn-sm" type="submit">Изменить баланс</button>
+              </form>
+              {% endif %}
+            </div>
+          </details>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  
+  <script>
+  function calculatePrice(amount, priceId) {
+      const val = parseFloat(amount) || 0;
+      const price = val * 1.2;
+      document.getElementById(priceId).value = price.toFixed(2) + ' G';
+  }
+  </script>
+  
+  {% else %}
+  <p class="muted">Пока нет лидов. Добавьте первого!</p>
+  {% endif %}
+</div>
+{% endblock %}

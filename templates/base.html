@@ -1,0 +1,65 @@
+
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ app_name }}{% endblock %} · {{ app_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+</head>
+<body>
+{% if current_manager %}
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">◆ {{ app_name }}</div>
+    <nav class="nav">
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard.index' }}">📊 Обзор</a>
+      <a href="{{ url_for('leads.index') }}" class="nav-item {{ 'active' if request.endpoint == 'leads.index' }}">📋 Лиды</a>
+      <a href="{{ url_for('submissions.index') }}" class="nav-item {{ 'active' if request.endpoint == 'submissions.index' }}">📸 Заявки</a>
+      <a href="{{ url_for('withdrawals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'withdrawals.index' }}">💰 Выводы</a>
+      <a href="{{ url_for('game.withdrawals_list') }}" class="nav-item {{ 'active' if request.endpoint == 'game.withdrawals_list' }}">🎮 В игру</a>
+      <a href="{{ url_for('scripts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'scripts.index' }}">📝 Скрипты</a>
+      
+      <a href="{{ url_for('game.leaderboard') }}" class="nav-item {{ 'active' if request.endpoint == 'game.leaderboard' }}">👑 Топ игроков</a>
+      <a href="{{ url_for('game.manager_game_stats') }}" class="nav-item {{ 'active' if request.endpoint == 'game.manager_game_stats' }}">📊 Моя статистика</a>
+      <a href="{{ url_for('game.support') }}" class="nav-item {{ 'active' if request.endpoint == 'game.support' }}">💬 Поддержка</a>
+      {% if current_manager.role == 'admin' %}
+      <a href="{{ url_for('managers.index') }}" class="nav-item {{ 'active' if request.endpoint == 'managers.index' }}">👥 Менеджеры</a>
+      <a href="{{ url_for('journal.index') }}" class="nav-item {{ 'active' if request.endpoint == 'journal.index' }}">📜 Журнал</a>
+      {% endif %}
+    </nav>
+    <div class="nav nav-bottom">
+      <div class="who">
+        {{ current_manager.name }} 
+        <span class="role-pill">{{ 'admin' if current_manager.role == 'admin' else 'менеджер' }}</span>
+        <span style="display:block;font-size:12px;color:var(--amber);margin-top:4px;">
+          💰 {{ "%.2f"|format(current_manager.balance or 0) }}G
+        </span>
+        {% if current_manager.total_earned %}
+        <span style="display:block;font-size:11px;color:var(--muted);">
+          🏆 Заработано: {{ "%.2f"|format(current_manager.total_earned) }}G
+        </span>
+        {% endif %}
+      </div>
+      <a href="{{ url_for('notifications.index') }}" class="nav-item">
+        🔔 Уведомления {% if unread_notifications %}<span class="badge-count">{{ unread_notifications }}</span>{% endif %}
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="nav-item">🚪 Выйти</a>
+    </div>
+  </aside>
+  <main class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% else %}
+{% block guest_content %}{% endblock %}
+{% endif %}
+</body>
+</html>

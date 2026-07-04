@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Уведомления{% endblock %}
+
+{% block content %}
+<h1>🔔 Уведомления</h1>
+
+<div class="tip">
+  💡 Здесь отображаются все ваши уведомления. 
+  Непрочитанные выделены жирным шрифтом.
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 style="font-size:14px;margin:0;">Все уведомления</h2>
+    <form method="post" action="{{ url_for('notifications.mark_all_read') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-soft btn-sm" type="submit">✅ Все прочитаны</button>
+    </form>
+  </div>
+  
+  {% if notifications %}
+  <table>
+    <thead>
+      <tr>
+        <th>Сообщение</th>
+        <th>Дата</th>
+        <th>Статус</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in notifications %}
+      <tr style="{% if not n.is_read %}font-weight:bold;background:rgba(108,140,255,0.05);{% endif %}">
+        <td>
+          {{ n.message }}
+          {% if n.link %}
+          <br><a href="{{ n.link }}" class="btn btn-soft btn-sm" style="margin-top:4px;">Перейти →</a>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;white-space:nowrap;">{{ n.created_at[:16] }}</td>
+        <td>
+          {% if n.is_read %}
+            <span class="badge badge-new">✅ Прочитано</span>
+          {% else %}
+            <span class="badge badge-contacted">🆕 Новое</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if not n.is_read %}
+          <form method="post" action="{{ url_for('notifications.mark_read', notif_id=n.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm" type="submit">📖 Прочитать</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="text-align:center;padding:20px;">📭 Нет уведомлений</p>
+  {% endif %}
+</div>
+
+<!-- Статистика уведомлений -->
+<div class="grid-3" style="margin-top:16px;">
+  <div class="kpi">
+    <span class="kpi-label">Всего уведомлений</span>
+    <span class="kpi-value">{{ notifications|length }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Непрочитанных</span>
+    <span class="kpi-value" style="color:var(--amber);">
+      {{ notifications|selectattr('is_read', 'equalto', 0)|list|length }}
+    </span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Прочитанных</span>
+    <span class="kpi-value" style="color:var(--green);">
+      {{ notifications|selectattr('is_read', 'equalto', 1)|list|length }}
+    </span>
+  </div>
+</div>
+{% endblock %}

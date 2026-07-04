@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Управление поддержкой{% endblock %}
+
+{% block content %}
+<h1>💬 Управление поддержкой</h1>
+<div class="tip">💡 Здесь отображаются все обращения пользователей.</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Менеджер</th>
+        <th>Тема</th>
+        <th>Статус</th>
+        <th>Сообщений</th>
+        <th>Дата</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tickets %}
+      <tr style="{% if t.unread_count > 0 %}font-weight:bold;background:rgba(108,140,255,0.05);{% endif %}">
+        <td>{{ t.id }}</td>
+        <td>{{ t.manager_name }}</td>
+        <td>{{ t.subject }}</td>
+        <td>
+          <span class="badge badge-{{ 'contacted' if t.status == 'open' else ('replied' if t.status == 'waiting' else 'declined') }}">
+            {% if t.status == 'open' %}🟢 Открыт{% elif t.status == 'waiting' %}🟡 Ожидает ответа{% else %}🔴 Закрыт{% endif %}
+          </span>
+          {% if t.unread_count > 0 %}
+          <span class="badge badge-contacted">🆕 {{ t.unread_count }}</span>
+          {% endif %}
+        </td>
+        <td>{{ t.total_messages or 0 }}</td>
+        <td style="font-size:12px;">{{ t.created_at[:16] }}</td>
+        <td>
+          <a href="{{ url_for('game.support_ticket', ticket_id=t.id) }}" class="btn btn-primary btn-sm">📖 Ответить</a>
+          {% if t.status != 'closed' %}
+          <form method="post" action="{{ url_for('game.support_close', ticket_id=t.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm" type="submit">🔒 Закрыть</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted text-center">Нет активных обращений</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

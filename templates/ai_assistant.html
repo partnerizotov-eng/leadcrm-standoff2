@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}AI-помощник{% endblock %}
+
+{% block content %}
+<h1>🤖 AI-помощник</h1>
+
+<div class="tip">
+  💡 Интеллектуальный помощник анализирует вашу работу и даёт персонализированные рекомендации.
+</div>
+
+<!-- Рекомендации -->
+<div class="card">
+  <h2>💡 Рекомендации</h2>
+  
+  {% if recommendations %}
+    {% for rec in recommendations %}
+    <div class="tip tip-{{ rec.type }}" style="border-left:4px solid {% if rec.priority == 'high' %}var(--red){% elif rec.priority == 'medium' %}var(--amber){% else %}var(--accent){% endif %};">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <strong>{{ rec.title }}</strong>
+          <p class="muted" style="font-size:13px;margin-top:4px;">{{ rec.description }}</p>
+        </div>
+        {% if rec.action %}
+        <a href="{{ rec.action }}" class="btn btn-primary btn-sm">{{ rec.action_text }}</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <p class="muted">Хорошая работа! Продолжайте в том же духе.</p>
+  {% endif %}
+</div>
+
+<!-- Лучшее время -->
+<div class="grid-2">
+  <div class="card">
+    <h2>⏰ Лучшее время для контакта</h2>
+    <div style="font-size:32px;color:var(--gold);">{{ best_time.hour }}</div>
+    <p class="muted">Успешность: {{ best_time.success_rate }}% ({{ best_time.total_contacts }} контактов)</p>
+  </div>
+  
+  <div class="card">
+    <h2>📊 Ваша статистика</h2>
+    <table>
+      <tr><td>Всего лидов</td><td><strong>{{ stats.total_leads or 0 }}</strong></td></tr>
+      <tr><td>Новых</td><td><strong>{{ stats.new_leads or 0 }}</strong></td></tr>
+      <tr><td>Написали</td><td><strong>{{ stats.contacted_leads or 0 }}</strong></td></tr>
+      <tr><td>Ответили</td><td><strong>{{ stats.replied_leads or 0 }}</strong></td></tr>
+      <tr><td>Участвовали</td><td><strong>{{ stats.participated_leads or 0 }}</strong></td></tr>
+      <tr><td>Возвращаются</td><td><strong>{{ stats.returning_leads or 0 }}</strong></td></tr>
+      <tr><td>Потеряно</td><td><strong style="color:var(--red);">{{ stats.lost_leads or 0 }}</strong></td></tr>
+      <tr><td>Конверсия</td><td><strong style="color:{% if stats.conversion_pct > 50 %}var(--green){% elif stats.conversion_pct > 30 %}var(--gold){% else %}var(--red){% endif %};">{{ stats.conversion_pct or 0 }}%</strong></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Следующие шаги -->
+<div class="card">
+  <h2>📝 Следующие шаги</h2>
+  {% if steps %}
+  <ol style="padding-left:20px;">
+    {% for step in steps %}
+    <li style="margin-bottom:8px;">
+      <strong>{{ step.action }}</strong>
+      <span class="badge badge-{{ 'contacted' if step.priority == 'Высокий' else ('replied' if step.priority == 'Средний' else 'new') }}">
+        {{ step.priority }}
+      </span>
+      <p class="muted" style="font-size:12px;margin-top:4px;">{{ step.details }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="muted">Нет активных задач. Хорошая работа!</p>
+  {% endif %}
+</div>
+
+<!-- Быстрые действия -->
+<div class="grid-3" style="margin-top:16px;">
+  <a href="{{ url_for('leads.index') }}" class="btn btn-primary" style="text-align:center;">📋 К лидам</a>
+  <a href="{{ url_for('game.manager_game_stats') }}" class="btn btn-soft" style="text-align:center;">📊 Моя статистика</a>
+  <a href="{{ url_for('achievements.index') }}" class="btn btn-gold" style="text-align:center;">🏆 Достижения</a>
+</div>
+{% endblock %}

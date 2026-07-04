@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Вывод голды в Standoff 2{% endblock %}
+
+{% block content %}
+<h1>🎮 Вывод голды в Standoff 2</h1>
+
+<div class="tip">
+  💡 <strong>Минимальная сумма вывода — {{ min_withdrawal }}G</strong>
+  <br>
+  📌 <strong>Цена за товар = Сумма вывода × 1.2</strong> (комиссия 20%)
+  <br>
+  Пример: выводите 100G → выставляете скин за <strong>120G</strong>
+</div>
+
+<!-- Калькулятор цены -->
+<div class="card" style="border-color: var(--gold);">
+  <h2>🧮 Калькулятор цены</h2>
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+    <div style="flex:1;min-width:150px;">
+      <label class="field" style="margin-bottom:0;">
+        <span>Сумма вывода (G)</span>
+        <input type="number" id="withdraw-amount" min="{{ min_withdrawal }}" step="0.01" value="100" 
+               oninput="calculatePrice()">
+      </label>
+    </div>
+    <div style="flex:1;min-width:150px;">
+      <label class="field" style="margin-bottom:0;">
+        <span>Цена товара (G)</span>
+        <input type="number" id="list-price" step="0.01" readonly style="color:var(--gold);font-weight:bold;">
+      </label>
+    </div>
+    <div style="font-size:13px;color:var(--muted);">
+      Комиссия: <strong>20%</strong>
+    </div>
+  </div>
+</div>
+
+<script>
+function calculatePrice() {
+    const amount = parseFloat(document.getElementById('withdraw-amount').value) || 0;
+    const price = amount * 1.2;
+    document.getElementById('list-price').value = price.toFixed(2);
+}
+calculatePrice();
+</script>
+
+<!-- Остальной контент (список выводов) -->
+<!-- ... тот же код что был ... -->
+
+{% endblock %}

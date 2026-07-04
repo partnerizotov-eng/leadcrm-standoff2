@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Рейтинг достижений{% endblock %}
+
+{% block content %}
+<h1>🏆 Рейтинг по достижениям</h1>
+
+<div class="tip">
+  💡 Здесь показаны менеджеры с наибольшим числом открытых достижений.
+</div>
+
+<div class="card">
+  {% if managers %}
+  <table>
+    <thead>
+      <tr>
+        <th style="width:60px;">Место</th>
+        <th>Менеджер</th>
+        <th style="width:120px;">Достижений</th>
+        <th>Список</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in managers %}
+      <tr class="{{ 'rank-1' if loop.index == 1 else 'rank-2' if loop.index == 2 else 'rank-3' if loop.index == 3 }}">
+        <td>
+          {% if loop.index == 1 %}<span class="badge badge-top1">🥇 1</span>
+          {% elif loop.index == 2 %}<span class="badge badge-top2">🥈 2</span>
+          {% elif loop.index == 3 %}<span class="badge badge-top3">🥉 3</span>
+          {% else %}{{ loop.index }}{% endif %}
+        </td>
+        <td>{{ m.name }}</td>
+        <td><strong>{{ m.achievements_count or 0 }}</strong></td>
+        <td class="muted" style="font-size:12px;">{{ m.achievements_list or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="text-align:center;padding:20px;">Пока никто не открыл достижений.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Поддержка{% endblock %}
+
+{% block content %}
+<h1>💬 Поддержка</h1>
+<div class="tip">💡 Здесь вы можете задать вопрос администратору. Мы ответим вам в течение рабочего дня.</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>✉️ Отправить сообщение</h2>
+    <form method="post" action="{{ url_for('game.support') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field"><span>Тема</span><input type="text" name="subject" placeholder="Например: Проблема с выводом" required></label>
+      <label class="field"><span>Сообщение</span><textarea name="message" rows="5" placeholder="Опишите вашу проблему подробнее..." required></textarea></label>
+      <button class="btn btn-primary" type="submit">📤 Отправить</button>
+    </form>
+  </div>
+  
+  <div class="card">
+    <h2>📋 Частые вопросы</h2>
+    <div style="margin-bottom:12px;"><strong>❓ Как привязать игровой ID?</strong><p class="muted" style="font-size:13px;">В карточке лида нажмите "Привязать" и введите ID из Standoff 2.</p></div>
+    <div style="margin-bottom:12px;"><strong>❓ Как вывести голду?</strong><p class="muted" style="font-size:13px;">Минимальная сумма вывода - 10G.</p></div>
+    <div style="margin-bottom:12px;"><strong>❓ Какую цену выставлять за скин?</strong><p class="muted" style="font-size:13px;"><strong>Цена = Сумма вывода × 1.2</strong> (комиссия 20%)</p></div>
+  </div>
+</div>
+
+{% if tickets %}
+<div class="card" style="margin-top:16px;">
+  <h2>📋 Мои обращения</h2>
+  <table>
+    <thead><tr><th>Тема</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+    <tbody>
+      {% for t in tickets %}
+      <tr>
+        <td>{{ t.subject }}</td>
+        <td><span class="badge badge-{{ 'contacted' if t.status == 'open' else ('replied' if t.status == 'waiting' else 'declined') }}">{% if t.status == 'open' %}🟢 Открыт{% elif t.status == 'waiting' %}🟡 Ожидает ответа{% else %}🔴 Закрыт{% endif %}</span></td>
+        <td style="font-size:12px;">{{ t.created_at[:16] }}</td>
+        <td>
+          <a href="{{ url_for('game.support_ticket', ticket_id=t.id) }}" class="btn btn-soft btn-sm">📖 Открыть</a>
+          {% if t.status == 'closed' %}
+          <form method="post" action="{{ url_for('game.support_reopen', ticket_id=t.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm" type="submit">🔄 Переоткрыть</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

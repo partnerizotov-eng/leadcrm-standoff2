@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Менеджеры{% endblock %}
+
+{% block content %}
+<h1>👥 Менеджеры</h1>
+
+<div class="card">
+  <h2>➕ Добавить менеджера</h2>
+  <form method="post" action="{{ url_for('managers.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid-2">
+      <label class="field">
+        <span>Имя</span>
+        <input type="text" name="name" required>
+      </label>
+      <label class="field">
+        <span>Логин</span>
+        <input type="text" name="login" required>
+      </label>
+      <label class="field">
+        <span>Пароль</span>
+        <input type="password" name="password" minlength="6" required>
+      </label>
+    </div>
+    <button class="btn btn-primary" type="submit">Добавить</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>📋 Список менеджеров</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Имя</th>
+        <th>Логин</th>
+        <th>Статус</th>
+        <th>Баланс</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in managers %}
+      <tr>
+        <td>{{ m.name }}</td>
+        <td>{{ m.login }}</td>
+        <td>{{ '✅ Активен' if m.is_active else '❌ Отключен' }}</td>
+        <td><span class="balance-pill">{{ "%.2f"|format(m.balance) }}G</span></td>
+        <td>
+          <form method="post" action="{{ url_for('managers.toggle', manager_id=m.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm" type="submit">
+              {{ 'Отключить' if m.is_active else 'Включить' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

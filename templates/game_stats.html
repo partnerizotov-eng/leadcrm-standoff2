@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Моя игровая статистика{% endblock %}
+
+{% block content %}
+<h1>📊 Моя игровая статистика</h1>
+
+<div class="tip">
+  💡 Ваш прогресс в системе. Достигайте целей и зарабатывайте больше!
+</div>
+
+<!-- Общая статистика -->
+<div class="grid-4" style="margin-bottom:18px;">
+  <div class="kpi" style="border-color: var(--gold);">
+    <span class="kpi-label">💰 Баланс</span>
+    <span class="kpi-value" style="color:var(--gold);">{{ "%.2f"|format(stats.balance or 0) }}G</span>
+  </div>
+  <div class="kpi" style="border-color: var(--green);">
+    <span class="kpi-label">🏆 Заработано всего</span>
+    <span class="kpi-value" style="color:var(--green);">{{ "%.2f"|format(stats.total_earned or 0) }}G</span>
+  </div>
+  <div class="kpi" style="border-color: var(--accent);">
+    <span class="kpi-label">🎯 Конверсия</span>
+    <span class="kpi-value">{{ stats.conversion_pct or 0 }}%</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">📊 Место в рейтинге</span>
+    <span class="kpi-value">#{{ rank or '—' }}</span>
+  </div>
+</div>
+
+<!-- Дневные цели -->
+<div class="card">
+  <h2>🎯 Дневные цели</h2>
+  <div class="grid-3">
+    <div class="kpi">
+      <span class="kpi-label">Новых лидов</span>
+      <div style="display:flex;justify-content:space-between;">
+        <span class="kpi-value" style="font-size:20px;">{{ goals.leads.achieved }}</span>
+        <span class="muted" style="font-size:14px;">/ {{ goals.leads.target }}</span>
+      </div>
+      <span class="bar-track">
+        <span class="bar-fill" style="width:{{ (goals.leads.achieved / goals.leads.target * 100)|round|int if goals.leads.target > 0 else 0 }}%;"></span>
+      </span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Заявок на проверку</span>
+      <div style="display:flex;justify-content:space-between;">
+        <span class="kpi-value" style="font-size:20px;">{{ goals.submissions.achieved }}</span>
+        <span class="muted" style="font-size:14px;">/ {{ goals.submissions.target }}</span>
+      </div>
+      <span class="bar-track">
+        <span class="bar-fill" style="width:{{ (goals.submissions.achieved / goals.submissions.target * 100)|round|int if goals.submissions.target > 0 else 0 }}%;"></span>
+      </span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Конверсия</span>
+      <div style="display:flex;justify-content:space-between;">
+        <span class="kpi-value" style="font-size:20px;">{{ goals.conversion.achieved }}%</span>
+        <span class="muted" style="font-size:14px;">/ {{ goals.conversion.target }}%</span>
+      </div>
+      <span class="bar-track">
+        <span class="bar-fill" style="width:{{ (goals.conversion.achieved / goals.conversion.target * 100)|round|int if goals.conversion.target > 0 else 0 }}%;"></span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Детальная статистика -->
+<div class="card">
+  <h2>📋 Детальная статистика</h2>
+  <div class="grid-2">
+    <div>
+      <h3 style="font-size:13px;color:var(--muted);">Лиды</h3>
+      <table>
+        <tr><td>Всего лидов</td><td><strong>{{ stats.total_leads or 0 }}</strong></td></tr>
+        <tr><td>Новые</td><td><strong>{{ stats.new_leads or 0 }}</strong></td></tr>
+        <tr><td>Написали</td><td><strong>{{ stats.contacted_leads or 0 }}</strong></td></tr>
+        <tr><td>Ответили</td><td><strong>{{ stats.replied_leads or 0 }}</strong></td></tr>
+        <tr><td>Вступили в канал</td><td><strong>{{ stats.joined_leads or 0 }}</strong></td></tr>
+        <tr><td>Участвовали</td><td><strong>{{ stats.participated_leads or 0 }}</strong></td></tr>
+        <tr><td>Возвращаются</td><td><strong>{{ stats.returning_leads or 0 }}</strong></td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 style="font-size:13px;color:var(--muted);">Заявки и выводы</h3>
+      <table>
+        <tr><td>Всего заявок</td><td><strong>{{ stats.total_submissions or 0 }}</strong></td></tr>
+        <tr><td>Одобрено</td><td><strong style="color:var(--green);">{{ stats.approved_submissions or 0 }}</strong></td></tr>
+        <tr><td>Отклонено</td><td><strong style="color:var(--red);">{{ stats.rejected_submissions or 0 }}</strong></td></tr>
+        <tr><td>Штрафов</td><td><strong style="color:var(--red);">{{ stats.penalties or 0 }}</strong></td></tr>
+        <tr><td>Всего выводов</td><td><strong>{{ stats.total_withdrawals or 0 }}</strong></td></tr>
+        <tr><td>Выведено голды</td><td><strong style="color:var(--gold);">{{ "%.2f"|format(stats.total_withdrawn or 0) }}G</strong></td></tr>
+        <tr><td>Заработано с заявок</td><td><strong style="color:var(--green);">{{ "%.2f"|format(stats.earnings_from_submissions or 0) }}G</strong></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="grid-3" style="margin-top:16px;">
+  <a href="{{ url_for('leads.index') }}" class="btn btn-primary" style="text-align:center;">
+    📋 Перейти к лидам
+  </a>
+  <a href="{{ url_for('submissions.index') }}" class="btn btn-soft" style="text-align:center;">
+    📸 Мои заявки
+  </a>
+  <a href="{{ url_for('game.withdrawals_list') }}" class="btn btn-gold" style="text-align:center;">
+    🎮 Вывод в Standoff 2
+  </a>
+</div>
+{% endblock %}

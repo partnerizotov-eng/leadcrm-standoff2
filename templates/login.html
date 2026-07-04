@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Вход{% endblock %}
+
+{% block guest_content %}
+<div style="max-width:360px;margin:80px auto;padding:16px;">
+  <h1 style="text-align:center;margin-bottom:20px;color:var(--accent);">◆ {{ app_name }}</h1>
+  
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  
+  <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field">
+      <span>Логин</span>
+      <input type="text" name="login" required autofocus>
+    </label>
+    <label class="field">
+      <span>Пароль</span>
+      <input type="password" name="password" required>
+    </label>
+    <button class="btn btn-primary" type="submit" style="width:100%;">Войти</button>
+  </form>
+  
+  <!-- Убрана подсказка admin/admin123 -->
+  <div style="text-align:center;margin-top:12px;color:var(--muted);font-size:12px;">
+    Введите ваши учетные данные
+  </div>
+</div>
+{% endblock %}

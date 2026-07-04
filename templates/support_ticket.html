@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Тикет #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+  <h1>💬 Тикет #{{ ticket.id }}</h1>
+  <a href="{{ url_for('game.support' if not is_admin else 'game.support_tickets') }}" class="btn btn-soft btn-sm">← Назад</a>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <strong>Тема:</strong> {{ ticket.subject }}
+      <br>
+      <span class="muted" style="font-size:12px;">От: {{ ticket.manager_name if is_admin else 'Я' }} · {{ ticket.created_at[:16] }}</span>
+    </div>
+    <div>
+      <span class="badge badge-{{ 'contacted' if ticket.status == 'open' else ('replied' if ticket.status == 'waiting' else 'declined') }}">
+        {% if ticket.status == 'open' %}🟢 Открыт{% elif ticket.status == 'waiting' %}🟡 Ожидает ответа{% else %}🔴 Закрыт{% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;max-height:400px;overflow-y:auto;">
+  {% for m in messages %}
+  <div style="margin-bottom:12px;padding:10px;border-radius:8px;{% if m.is_admin %}background:rgba(108,140,255,0.08);border:1px solid rgba(108,140,255,0.2);{% else %}background:rgba(255,255,255,0.03);border:1px solid var(--border);{% endif %}">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;">
+      <span>{% if m.is_admin %}👤 Администратор{% else %}👤 {{ m.sender_name or 'Менеджер' }}{% endif %}</span>
+      <span>{{ m.created_at[:16] }}</span>
+    </div>
+    <div style="font-size:14px;white-space:pre-wrap;">{{ m.message }}</div>
+  </div>
+  {% else %}
+  <p class="muted">Нет сообщений в этом тикете</p>
+  {% endfor %}
+</div>
+
+{% if ticket.status != 'closed' %}
+<div class="card" style="border-color:var(--accent);">
+  <h2 style="font-size:14px;margin-top:0;">✉️ {{ 'Ответить менеджеру' if is_admin else 'Добавить сообщение' }}</h2>
+  <form method="post" action="{{ url_for('game.support') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+    <input type="hidden" name="subject" value="{{ ticket.subject }}">
+    <label class="field">
+      <span>Сообщение</span>
+      <textarea name="message" rows="4" placeholder="Введите ваше сообщение..." required></textarea>
+    </label>
+    <button class="btn btn-primary" type="submit">📤 {{ 'Ответить' if is_admin else 'Отправить' }}</button>
+  </form>
+</div>
+{% else %}
+<div class="tip-warning">
+  ⚠️ Этот тикет закрыт.
+  <a href="{{ url_for('game.support_reopen', ticket_id=ticket.id) }}" class="btn btn-soft btn-sm">🔄 Переоткрыть</a>
+</div>
+{% endif %}
+{% endblock %}

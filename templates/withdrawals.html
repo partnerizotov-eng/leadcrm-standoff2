@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Выводы{% endblock %}
+
+{% block content %}
+<h1>💰 Выводы</h1>
+
+<div class="tip">
+  💡 Это ваш собственный баланс золота (начисляется за одобренные заявки по вашим лидам). 
+  Минимальный вывод — {{ min_withdrawal }}G. После заявки баланс сразу списывается.
+</div>
+
+<!-- КНОПКА ВЫВОДА ДЛЯ МЕНЕДЖЕРОВ -->
+{% if not is_admin %}
+<div class="card" style="margin-bottom:16px;border-color:var(--gold);">
+  <h2 style="font-size:14px;margin-top:0;">💰 Мой баланс: <span class="balance-pill">{{ "%.2f"|format(my_balance) }}G</span></h2>
+  
+  {% if my_balance >= min_withdrawal %}
+  <form method="post" action="{{ url_for('withdrawals.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field" style="margin-bottom:6px;">
+      <span>Сумма вывода (от {{ min_withdrawal }}G)</span>
+      <input type="number" name="amount" min="{{ min_withdrawal }}" step="0.01" max="{{ my_balance }}" required>
+    </label>
+    <button class="btn btn-primary" type="submit">💰 Запросить вывод</button>
+  </form>
+  {% else %}
+  <p class="muted" style="margin-bottom:0;">
+    Наберите ещё {{ "%.2f"|format(min_withdrawal - my_balance) }}G, чтобы можно было запросить вывод.
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Для админа - настройка комиссии -->
+{% if is_admin %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="font-size:14px;margin-top:0;">⚙️ Комиссия площадки</h2>
+  <form method="post" action="{{ url_for('withdrawals.set_commission') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="number" name="commission_pct" step="1" min="0" max="90" placeholder="20" style="width:80px;">
+    <span class="muted">%</span>
+    <button class="btn btn-soft btn-sm" type="submit">Сохранить</button>
+  </form>
+</div>
+{% endif %}
+
+<!-- Фильтр по статусу -->
+<form method="get" class="inline" style="margin-bottom:14px;">
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Все</option>
+    <option value="awaiting_listing" {{ 'selected' if status_filter == 'awaiting_listing' }}>Ожидают выставления</option>
+    <option value="proof_submitted" {{ 'selected' if status_filter == 'proof_submitted' }}>Скриншот на проверке</option>
+    <option value="completed" {{ 'selected' if status_filter == 'completed' }}>Завершены</option>
+    <option value="rejected" {{ 'selected' if status_filter == 'rejected' }}>Отклонены</option>
+  </select>
+</form>
+
+<!-- Список выводов -->
+{% if withdrawals %}
+{% for w in withdrawals %}
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <strong>{{ w.manager_name }}</strong>
+      <div class="muted" style="font-size:12px;margin-top:4px;">
+        Запрошено {{ "%.2f"|format(w.requested_amount) }}G
+        {% if w.list_price %}· выставить за <strong>{{ "%.2f"|format(w.list_price) }}G</strong>{% endif %}
+        {% if w.commission_pct %}(комиссия {{ w.commission_pct|round|int }}%){% endif %}
+      </div>
+    </div>
+    <span class="badge badge-{{ {'awaiting_listing':'pending','proof_submitted':'contacted','completed':'completed','rejected':'rejected'}.get(w.status, 'pending') }}">
+      {{ {'awaiting_listing': '⏳ Ожидает выставления', 'proof_submitted': '📸 Скриншот на проверке', 'completed': '✅ Завершён', 'rejected': '❌ Отклонён'}.get(w.status, w.status) }}
+    </span>
+  </div>
+
+  <!-- История сообщений -->
+  <div class="thread">
+    {% for e in events_by_withdrawal[w.id] %}
+    <div class="thread-msg {{ e.actor }}">
+      <div class="thread-meta">
+        {{ {'system':'Система','manager':'Менеджер','admin':'Администратор'}[e.actor] }} · {{ e.created_at[:16] }}
+      </div>
+      {{ e.message }}
+      {% if e.screenshot %}
+      <a href="{{ url_for('uploads.serve', filename=e.screenshot) }}" target="_blank">
+        <img src="{{ url_for('uploads.serve', filename=e.screenshot) }}" alt="Скриншот">
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Для менеджера - отправка скриншота продажи -->
+  {% if w.status == 'awaiting_listing' and (is_admin or w.manager_id == current_manager.id) %}
+  <form method="post" action="{{ url_for('withdrawals.submit_proof', wid=w.id) }}" enctype="multipart/form-data" style="margin-top:8px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field">
+      <span>📸 Скриншот продажи</span>
+      <input type="file" name="screenshot" accept="image/*" required>
+    </label>
+    <button class="btn btn-primary btn-sm" type="submit">Прислать скриншот</button>
+  </form>
+  {% endif %}
+
+  <!-- Для админа - подтверждение/отклонение -->
+  {% if is_admin and w.status in ('awaiting_listing', 'proof_submitted') %}
+  <div style="margin-top:8px;display:flex;gap:8px;">
+    <form method="post" action="{{ url_for('withdrawals.complete', wid=w.id) }}" enctype="multipart/form-data" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="text" name="comment" placeholder="Комментарий" style="width:150px;">
+      <button class="btn btn-success btn-sm" type="submit">✅ Подтвердить</button>
+    </form>
+    <form method="post" action="{{ url_for('withdrawals.reject', wid=w.id) }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="text" name="comment" placeholder="Причина" style="width:150px;">
+      <button class="btn btn-danger btn-sm" type="submit">❌ Отклонить</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p class="muted">Нет заявок на вывод.</p></div>
+{% endif %}
+{% endblock %}

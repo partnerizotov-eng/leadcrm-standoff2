@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Заявки{% endblock %}
+
+{% block content %}
+<h1>📸 Заявки на проверку</h1>
+
+<div class="tip-warning">
+  ⚠️ <strong>Внимание!</strong> При отклонении заявки с менеджера списывается <strong>{{ penalty_amount }}G</strong> за ошибку.
+</div>
+
+<div class="tip">
+  💡 {% if is_admin %}Проверьте скриншоты. Одобрение начисляет +10G лиду и +10G менеджеру.{% else %}Ваши заявки на проверку. За каждую одобренную заявку вы получаете +10G на баланс.{% endif %}
+</div>
+
+<form method="get" class="inline" style="margin-bottom:14px;">
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Все</option>
+    <option value="pending" {{ 'selected' if status_filter == 'pending' }}>На проверке</option>
+    <option value="approved" {{ 'selected' if status_filter == 'approved' }}>Одобрены</option>
+    <option value="rejected" {{ 'selected' if status_filter == 'rejected' }}>Отклонены</option>
+  </select>
+</form>
+
+{% if submissions %}
+{% for s in submissions %}
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <strong>{{ s.lead_name or s.vk_id }}</strong>
+      <a href="{{ s.vk_url }}" target="_blank" class="btn btn-soft btn-sm" style="margin-left:6px;">Профиль</a>
+      <a href="{{ vk_chat_url(s.vk_id) }}" target="_blank" class="btn btn-soft btn-sm">💬 Написать</a>
+      <div class="muted" style="font-size:12px;margin-top:4px;">
+        Раунд {{ s.round_date }} {{ s.round_slot }} · менеджер {{ s.manager_name }}
+        {% if s.manager_balance is defined %}
+        · Баланс менеджера: {{ "%.2f"|format(s.manager_balance) }}G
+        {% endif %}
+      </div>
+    </div>
+    <span class="badge badge-{{ 'pending' if s.status == 'pending' else ('approved' if s.status == 'approved' else 'rejected') }}">
+      {{ 'На проверке' if s.status == 'pending' else ('✅ Одобрена' if s.status == 'approved' else '❌ Отклонена') }}
+    </span>
+  </div>
+  
+  <a href="{{ url_for('uploads.serve', filename=s.screenshot) }}" target="_blank">
+    <img src="{{ url_for('uploads.serve', filename=s.screenshot) }}" alt="Скриншот" style="max-width:280px;border-radius:8px;margin-top:10px;">
+  </a>
+
+  {% if s.admin_comment %}
+  <div class="tip" style="margin-top:10px;border-color:var(--amber);">
+    💬 Комментарий администратора: {{ s.admin_comment }}
+  </div>
+  {% endif %}
+
+  {% if is_admin and s.status == 'pending' %}
+  <form method="post" action="{{ url_for('submissions.review', sub_id=s.id) }}" style="margin-top:10px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field">
+      <span>Комментарий для менеджера</span>
+      <textarea name="comment" rows="2" placeholder="Например: ID не виден на скрине, попросите переснять"></textarea>
+    </label>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-success btn-sm" type="submit" name="decision" value="approved">✅ Одобрить (+10G)</button>
+      <button class="btn btn-danger btn-sm" type="submit" name="decision" value="rejected">❌ Отклонить (-{{ penalty_amount }}G)</button>
+    </div>
+    <div class="tip-danger" style="margin-top:6px;font-size:12px;">
+      ⚠️ При отклонении с менеджера спишется {{ penalty_amount }}G
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p class="muted">Нет заявок.</p></div>
+{% endif %}
+{% endblock %}

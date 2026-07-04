@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Рейтинг{% endblock %}
+
+{% block content %}
+<h1>🏆 Рейтинг менеджеров</h1>
+
+<p class="muted" style="margin-bottom:18px;">
+  Общий рейтинг всех менеджеров по конверсии.
+  {% if current_pos %}Ваше место: <strong>#{{ current_pos }}</strong>{% endif %}
+</p>
+
+<div class="grid-4" style="margin-bottom:18px;">
+  <div class="kpi">
+    <span class="kpi-label">Всего лидов</span>
+    <span class="kpi-value">{{ stats.total_leads }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Менеджеров</span>
+    <span class="kpi-value">{{ stats.total_managers }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Всего участий</span>
+    <span class="kpi-value" style="color:var(--green);">{{ stats.total_participations }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Средняя конверсия</span>
+    <span class="kpi-value" style="color:var(--gold);">{{ stats.avg_conversion }}%</span>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:18px;">
+  <div class="kpi" style="border-color: var(--gold);">
+    <span class="kpi-label">💰 Общий баланс менеджеров</span>
+    <span class="kpi-value" style="color:var(--gold);">{{ "%.2f"|format(stats.total_balance) }}G</span>
+  </div>
+  <div class="kpi" style="border-color: var(--red);">
+    <span class="kpi-label">📊 Общий долг перед лидами</span>
+    <span class="kpi-value" style="color:var(--red);">{{ "%.2f"|format(stats.total_debt) }}G</span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>📋 Рейтинг менеджеров</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Менеджер</th>
+        <th>Лидов</th>
+        <th>Конверсия</th>
+        <th>Участий</th>
+        <th>Баланс</th>
+        <th>Заработано</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rating %}
+      <tr {% if r.id == current_manager.id %}style="background:rgba(108,140,255,0.08);"{% endif %}>
+        <td>
+          {% if loop.index == 1 %}🥇
+          {% elif loop.index == 2 %}🥈
+          {% elif loop.index == 3 %}🥉
+          {% else %}{{ loop.index }}{% endif %}
+        </td>
+        <td>
+          {{ r.name }}
+          {% if r.id == current_manager.id %}
+            <span style="font-size:10px;color:var(--accent);">(Вы)</span>
+          {% endif %}
+        </td>
+        <td>{{ r.total_leads }}</td>
+        <td>
+          <strong style="color:{% if r.conversion_pct >= 50 %}var(--green){% elif r.conversion_pct >= 25 %}var(--gold){% else %}var(--red){% endif %};">
+            {{ r.conversion_pct }}%
+          </strong>
+        </td>
+        <td>{{ r.approved_submissions }}</td>
+        <td><span class="balance-pill">{{ "%.2f"|format(r.balance) }}G</span></td>
+        <td>{{ "%.2f"|format(r.total_earned) }}G</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Обзор{% endblock %}
+
+{% block content %}
+<h1>📊 Обзор</h1>
+<p class="muted" style="margin-bottom:18px;">
+  {% if is_admin %}Воронка по всей команде{% else %}Ваша воронка{% endif %}
+</p>
+
+{% if is_admin %}
+<div class="tip">
+  💡 «Заявки на проверку» — там ждут решения скриншоты с игровым ID. 
+  «Выводы» — заявки менеджеров на вывод баланса.
+  <br>
+  <span style="color:var(--gold);">💰 Общий долг перед лидами: {{ "%.2f"|format(total_debt or 0) }}G</span>
+</div>
+{% else %}
+<div class="tip">
+  💡 Нашли лида — добавьте в «Лиды». Есть скриншот с ID — отправьте на проверку. 
+  За каждое одобрение +10G на баланс. За ошибку — штраф 1G.
+</div>
+{% endif %}
+
+
+<!-- Добавьте после блока с воронкой -->
+
+<!-- Информация о конкурсах -->
+<div class="card" style="margin-top:16px;border-color:var(--gold);">
+  <h2>🎁 Ближайшие конкурсы</h2>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:150px;padding:12px;background:rgba(255,215,0,0.05);border-radius:8px;text-align:center;">
+      <div style="font-size:24px;">🌅</div>
+      <div style="font-weight:bold;">12:00</div>
+      <div class="muted" style="font-size:12px;">Дневной конкурс</div>
+      <div style="font-size:14px;color:var(--gold);">50 G</div>
+    </div>
+    <div style="flex:1;min-width:150px;padding:12px;background:rgba(255,215,0,0.05);border-radius:8px;text-align:center;">
+      <div style="font-size:24px;">🌇</div>
+      <div style="font-weight:bold;">18:00</div>
+      <div class="muted" style="font-size:12px;">Вечерний конкурс</div>
+      <div style="font-size:14px;color:var(--gold);">50 G</div>
+    </div>
+    <div style="flex:1;min-width:150px;padding:12px;background:rgba(255,215,0,0.05);border-radius:8px;text-align:center;">
+      <div style="font-size:24px;">🌙</div>
+      <div style="font-weight:bold;">00:00</div>
+      <div class="muted" style="font-size:12px;">Ночной конкурс</div>
+      <div style="font-size:14px;color:var(--gold);">50 G</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:12px;">
+    <a href="https://vk.com/im/channels/-239908136" target="_blank" class="btn btn-primary btn-sm">
+      📢 Перейти в канал
+    </a>
+  </div>
+</div>
+<!-- KPIs -->
+<div class="grid-3" style="margin-bottom:18px;">
+  <div class="kpi">
+    <span class="kpi-label">Всего лидов</span>
+    <span class="kpi-value">{{ funnel.values()|sum }}</span>
+  </div>
+  {% if is_admin %}
+  <div class="kpi">
+    <span class="kpi-label">Заявок на проверку</span>
+    <span class="kpi-value gold">{{ pending_submissions or 0 }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Выводов в работе</span>
+    <span class="kpi-value">{{ pending_withdrawals or 0 }}</span>
+  </div>
+  {% else %}
+  <div class="kpi">
+    <span class="kpi-label">Мой баланс</span>
+    <span class="kpi-value gold">{{ "%.2f"|format(my_stats.balance) if my_stats else "0.00" }}G</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">В работе</span>
+    <span class="kpi-value">{{ my_leads or 0 }}</span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Воронка -->
+<div class="card">
+  <h2>Воронка</h2>
+  {% for s in statuses %}
+  <div style="margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;font-size:13px;">
+      <span>{{ status_labels[s] }}</span>
+      <span class="mono">{{ funnel[s] }}</span>
+    </div>
+    <span class="bar-track">
+      <span class="bar-fill" style="width:{{ (funnel[s]/total*100)|round|int if total > 0 else 0 }}%;"></span>
+    </span>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Рейтинг -->
+{% if is_admin and leaderboard %}
+<div class="card">
+  <h2>🏆 Рейтинг менеджеров</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Менеджер</th>
+        <th>Лидов</th>
+        <th>Конверсия</th>
+        <th>Возвращаются</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in leaderboard %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.total_leads }}</td>
+        <td>{{ r.conversion_pct }}%</td>
+        <td>{{ r.returning_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- templates/dashboard.html - добавляем графики -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="card" style="margin-top:16px;">
+    <h2>📈 Динамика активности</h2>
+    <canvas id="activityChart" height="100"></canvas>
+</div>
+
+<script>
+fetch('/api/v1/stats')
+    .then(r => r.json())
+    .then(data => {
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                datasets: [{
+                    label: 'Новые лиды',
+                    data: [12, 19, 3, 5, 2, 3, 7],
+                    borderColor: '#6c8cff',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#e8e9ee' }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: '#8a90a2' },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    x: {
+                        ticks: { color: '#8a90a2' },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% if is_admin and total_debt is defined %}
+<div class="card" style="border-color:var(--gold);">
+  <h2>💰 Финансовая сводка</h2>
+  <div class="grid-2">
+    <div class="kpi">
+      <span class="kpi-label">Общий баланс менеджеров</span>
+      <span class="kpi-value gold">{{ "%.2f"|format(total_balance_owed or 0) }}G</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Общий долг перед лидами</span>
+      <span class="kpi-value red">{{ "%.2f"|format(total_debt) }}G</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

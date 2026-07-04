@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Журнал{% endblock %}
+
+{% block content %}
+<h1>📜 Журнал действий</h1>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Время</th>
+        <th>Кто</th>
+        <th>Действие</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.created_at }}</td>
+        <td>{{ e.manager_name or 'система' }}</td>
+        <td>{{ e.message }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="3" class="muted">Журнал пуст</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

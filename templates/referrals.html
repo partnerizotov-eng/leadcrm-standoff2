@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Рефералы{% endblock %}
+
+{% block content %}
+<h1>🤝 Реферальная система</h1>
+
+<div class="tip">
+  💡 Приглашайте новых лидов и получайте <strong>{{ reward_amount }}G</strong> за каждого
+  активированного реферала.
+</div>
+
+<!-- Статистика -->
+<div class="grid-4" style="margin-bottom:16px;">
+  <div class="kpi">
+    <span class="kpi-label">Всего рефералов</span>
+    <span class="kpi-value">{{ stats.total or 0 }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Вознаграждено</span>
+    <span class="kpi-value" style="color:var(--green);">{{ stats.rewarded or 0 }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Ожидают</span>
+    <span class="kpi-value" style="color:var(--amber);">{{ stats.pending or 0 }}</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-label">Заработано</span>
+    <span class="kpi-value" style="color:var(--gold);">{{ "%.2f"|format(stats.total_rewards or 0) }}G</span>
+  </div>
+</div>
+
+<!-- Реферальная ссылка -->
+{% if ref_link %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="font-size:14px;">🔗 Ваша реферальная ссылка</h2>
+  <input type="text" class="mono" value="{{ ref_link }}" readonly onclick="this.select()"
+         style="width:100%;padding:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+  <p class="muted" style="font-size:12px;margin-top:6px;">Нажмите на ссылку, чтобы выделить и скопировать.</p>
+</div>
+{% endif %}
+
+<!-- Добавить реферала вручную -->
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="font-size:14px;">➕ Добавить реферала</h2>
+  <form method="post" action="{{ url_for('referrals.add_referral') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid-2">
+      <label class="field">
+        <span>Ссылка VK</span>
+        <input type="text" name="vk_url" placeholder="https://vk.com/id..." required>
+      </label>
+      <label class="field">
+        <span>Имя (необязательно)</span>
+        <input type="text" name="name" placeholder="Имя лида">
+      </label>
+    </div>
+    <button class="btn btn-primary btn-sm" type="submit">Добавить реферала</button>
+  </form>
+</div>
+
+<!-- Список рефералов -->
+<div class="card">
+  <h2 style="font-size:14px;">📋 Мои рефералы</h2>
+  {% if referrals %}
+  <table>
+    <thead>
+      <tr>
+        <th>Лид</th>
+        <th>Статус лида</th>
+        <th>Награда</th>
+        <th>Статус</th>
+        <th>Дата</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in referrals %}
+      <tr>
+        <td>
+          {% if r.vk_url %}<a href="{{ r.vk_url }}" target="_blank" rel="noopener">{{ r.lead_name or r.vk_id }}</a>
+          {% else %}{{ r.lead_name or r.vk_id }}{% endif %}
+        </td>
+        <td><span class="badge badge-{{ r.lead_status }}">{{ r.lead_status }}</span></td>
+        <td>{{ "%.2f"|format(r.reward_amount or 0) }}G</td>
+        <td>
+          {% if r.ref_status == 'rewarded' %}
+            <span class="badge badge-approved">✅ Начислено</span>
+          {% else %}
+            <span class="badge badge-pending">⏳ Ожидает</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;white-space:nowrap;">{{ (r.created_at or '')[:16] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="text-align:center;padding:20px;">Пока нет рефералов. Пригласите первого!</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Достижения{% endblock %}
+
+{% block content %}
+<h1>🏆 Мои достижения</h1>
+
+<div class="tip">
+  💡 Зарабатывайте достижения за активную работу. 
+  Каждое достижение — это признание ваших успехов!
+</div>
+
+<!-- Прогресс -->
+<div class="card" style="border-color: var(--gold);">
+  <h2>📊 Прогресс</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Открыто: {{ unlocked }} из {{ total }}</span>
+    <span>{{ progress }}%</span>
+  </div>
+  <span class="bar-track">
+    <span class="bar-fill" style="width:{{ progress }}%;background:var(--gold);"></span>
+  </span>
+</div>
+
+<!-- Новые достижения -->
+{% if new_achievements %}
+<div class="flash" style="border-color:var(--gold);">
+  <h3 style="color:var(--gold);">🎉 Новые достижения!</h3>
+  {% for ach in new_achievements %}
+  <div style="padding:8px;background:rgba(255,215,0,0.1);border-radius:8px;margin:4px 0;">
+    {{ ach.icon }} <strong>{{ ach.name }}</strong> — {{ ach.description }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Все достижения -->
+<div class="grid-3">
+  {% for ach_id, ach in all_achievements.items() %}
+  <div class="card" style="{% if ach_id in achievements|map(attribute='achievement_id')|list %}border-color:var(--gold);background:rgba(255,215,0,0.05);{% endif %}">
+    <div style="font-size:32px;text-align:center;">{{ ach.icon }}</div>
+    <h3 style="text-align:center;font-size:14px;margin:8px 0;">{{ ach.name }}</h3>
+    <p class="muted" style="text-align:center;font-size:12px;">{{ ach.description }}</p>
+    {% if ach_id in achievements|map(attribute='achievement_id')|list %}
+    <div style="text-align:center;">
+      <span class="badge badge-joined_channel">✅ Открыто</span>
+    </div>
+    {% else %}
+    <div style="text-align:center;">
+      <span class="badge badge-new">🔒 Закрыто</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Мои достижения -->
+<div class="card" style="margin-top:16px;">
+  <h2>📋 Мои достижения</h2>
+  {% if achievements %}
+  <table>
+    <thead>
+      <tr>
+        <th>Достижение</th>
+        <th>Описание</th>
+        <th>Дата получения</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in achievements %}
+      <tr>
+        <td>{{ a.icon }} {{ a.name }}</td>
+        <td>{{ a.description }}</td>
+        <td>{{ a.unlocked_at[:16] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Пока нет достижений. Работайте активнее!</p>
+  {% endif %}
+</div>
+{% endblock %}

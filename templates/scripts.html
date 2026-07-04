@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Скрипты{% endblock %}
+
+{% block content %}
+<h1>📝 Скрипты</h1>
+
+<div class="tip">
+  💡 <strong>Как использовать скрипты:</strong>
+  <br>
+  1. Нажмите <strong>📋 Копировать</strong> - текст скопируется в буфер обмена
+  <br>
+  2. Вставьте текст в VK/Telegram и отправьте лиду
+  <br>
+  3. В скрипте <strong>{name}</strong> автоматически заменится на имя лида из CRM
+  <br>
+  4. В скрипте <strong>{manager}</strong> автоматически заменится на ваше имя
+</div>
+
+<!-- Создание скрипта -->
+<div class="card" style="margin-bottom:18px;">
+  <h2>➕ Новый скрипт</h2>
+  <form method="post" action="{{ url_for('scripts.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid-2">
+      <label class="field">
+        <span>Название</span>
+        <input type="text" name="label" placeholder="Вариант А — прямое приветствие" required>
+      </label>
+      <label class="field">
+        <span>Категория</span>
+        <select name="category">
+          <option value="Приветствие">Приветствие</option>
+          <option value="Напоминание">Напоминание</option>
+          <option value="Приглашение">Приглашение</option>
+          <option value="Возврат">Возврат</option>
+          <option value="Другое">Другое</option>
+        </select>
+      </label>
+    </div>
+    <label class="field">
+      <span>Текст сообщения</span>
+      <textarea name="body" rows="4" required placeholder="Введите текст сообщения..."></textarea>
+    </label>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+      💡 <strong>Доступные переменные:</strong>
+      <br>
+      <code>{name}</code> - имя лида (подставляется автоматически)
+      <br>
+      <code>{manager}</code> - ваше имя (подставляется автоматически)
+      <br>
+      <code>{group}</code> - группа-источник лида
+    </div>
+    <button class="btn btn-primary" type="submit">➕ Добавить скрипт</button>
+  </form>
+</div>
+
+<!-- Список скриптов -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 style="font-size:14px;margin:0;">📋 Все скрипты</h2>
+    <div>
+      <span class="muted" style="font-size:12px;">Показаны активные скрипты</span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Категория</th>
+        <th>Текст</th>
+        <th>Использован</th>
+        <th>% ответов</th>
+        <th>Статус</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in scripts %}
+      <tr>
+        <td>
+          <strong>{{ s.label }}</strong>
+        </td>
+        <td>
+          <span class="badge badge-{{ 'contacted' if s.category == 'Приветствие' else ('replied' if s.category == 'Напоминание' else ('joined_channel' if s.category == 'Приглашение' else 'new')) }}">
+            {{ s.category or 'Другое' }}
+          </span>
+        </td>
+        <td style="max-width:300px;">
+          <div style="font-size:12px;white-space:pre-wrap;word-wrap:break-word;max-height:80px;overflow-y:auto;background:#0d0f14;padding:8px;border-radius:6px;">
+            {{ s.body[:150] }}{% if s.body|length > 150 %}…{% endif %}
+          </div>
+          <!-- Предпросмотр с подстановкой -->
+          <details style="margin-top:4px;">
+            <summary style="cursor:pointer;font-size:11px;color:var(--muted);">👁️ Предпросмотр с подстановкой</summary>
+            <div style="font-size:12px;white-space:pre-wrap;word-wrap:break-word;background:rgba(62,207,142,0.05);padding:8px;border-radius:6px;margin-top:4px;border:1px solid var(--border);">
+              {{ s.body|replace('{name}', 'Игрок')|replace('{manager}', current_manager.name)|replace('{group}', 'Standoff 2') }}
+            </div>
+          </details>
+          <!-- Кнопка копирования -->
+          <button class="btn btn-primary btn-sm" style="margin-top:4px;" onclick="copyScript(this, {{ s.id }})">
+            📋 Копировать
+          </button>
+          <span id="copied-{{ s.id }}" style="display:none;color:var(--green);font-size:11px;margin-left:6px;">
+            ✅ Скопировано!
+          </span>
+        </td>
+        <td>{{ s.times_used }}</td>
+        <td>
+          {% if s.reply_rate is not none %}
+            <span style="color:{% if s.reply_rate >= 50 %}var(--green){% elif s.reply_rate >= 30 %}var(--gold){% else %}var(--red){% endif %};font-weight:bold;">
+              {{ s.reply_rate }}%
+            </span>
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if s.is_active %}
+            <span class="badge badge-joined_channel">✅ Активен</span>
+          {% else %}
+            <span class="badge badge-declined">⛔ Отключен</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <form method="post" action="{{ url_for('scripts.toggle', script_id=s.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-soft btn-sm" type="submit">
+                {{ 'Отключить' if s.is_active else 'Включить' }}
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="muted text-center">Нет скриптов. Создайте первый!</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Статистика по скриптам -->
+<div class="card" style="margin-top:16px;">
+  <h2>📊 Статистика скриптов</h2>
+  <div class="grid-3">
+    <div class="kpi">
+      <span class="kpi-label">Всего скриптов</span>
+      <span class="kpi-value">{{ scripts|length }}</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Активных</span>
+      <span class="kpi-value" style="color:var(--green);">
+        {{ scripts|selectattr('is_active')|list|length }}
+      </span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Средняя конверсия</span>
+      <span class="kpi-value" style="color:var(--gold);">
+        {% set reply_rates = [] %}
+        {% for s in scripts %}
+          {% if s.reply_rate is not none %}
+            {% set _ = reply_rates.append(s.reply_rate) %}
+          {% endif %}
+        {% endfor %}
+        {% if reply_rates|length > 0 %}
+          {{ (reply_rates|sum / reply_rates|length)|round|int }}%
+        {% else %}
+          —
+        {% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyScript(btn, id) {
+    // Находим текст скрипта
+    const row = btn.closest('tr');
+    const textDiv = row.querySelector('td:nth-child(3) div');
+    let text = textDiv.textContent.trim();
+    
+    // Подставляем переменные
+    text = text.replace(/\{name\}/g, 'Игрок');
+    text = text.replace(/\{manager\}/g, '{{ current_manager.name }}');
+    text = text.replace(/\{group\}/g, 'Standoff 2');
+    
+    // Копируем в буфер обмена
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            showCopied(id);
+        }).catch(() => {
+            fallbackCopy(text, id);
+        });
+    } else {
+        fallbackCopy(text, id);
+    }
+}
+
+function fallbackCopy(text, id) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showCopied(id);
+}
+
+function showCopied(id) {
+    const copied = document.getElementById('copied-' + id);
+    if (copied) {
+        copied.style.display = 'inline';
+        setTimeout(() => {
+            copied.style.display = 'none';
+        }, 3000);
+    }
+}
+</script>
+{% endblock %}
