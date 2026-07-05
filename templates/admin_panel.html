@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+
+{% block title %}Админ-панель{% endblock %}
+
+{% block content %}
+<div class="admin-panel">
+  <h1>⚙️ Административная панель</h1>
+
+  <div class="kpi-dashboard">
+    <div class="kpi-box"><span class="kpi-num">{{ managers|length }}</span><span class="kpi-label">Менеджеров</span></div>
+    <div class="kpi-box"><span class="kpi-num">{{ all_leads|length }}</span><span class="kpi-label">Лидов всего</span></div>
+    <div class="kpi-box"><span class="kpi-num">{{ pending_withdrawals|length }}</span><span class="kpi-label">Выводов на проверке</span></div>
+    <div class="kpi-box"><span class="kpi-num">{{ payment_proofs|length }}</span><span class="kpi-label">Выплат подтверждено</span></div>
+    <div class="kpi-box"><span class="kpi-num">{{ all_scripts|length }}</span><span class="kpi-label">Скриптов</span></div>
+    <div class="kpi-box"><span class="kpi-num">{{ deleted_leads|length }}</span><span class="kpi-label">Удалённых лидов</span></div>
+  </div>
+
+  <div class="admin-quick-nav">
+    <a href="{{ url_for('admin.top_managers') }}" class="quick-nav-pill">🏆 Топ менеджеров</a>
+    <a href="{{ url_for('admin.messaging') }}" class="quick-nav-pill">📢 Массовая рассылка</a>
+  </div>
+
+  <div class="card">
+    <div class="card-header">👥 Менеджеры — доступ и профиль</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>Менеджер</th><th>Логин</th><th>Email</th><th>VK</th><th>ID Standoff2</th><th>Статус</th><th>Действия</th></tr>
+        </thead>
+        <tbody>
+          {% for manager in managers %}
+            <tr>
+              <td>{{ manager.name }}</td>
+              <td>{{ manager.login }}</td>
+              <td>{{ manager.email or '—' }}</td>
+              <td>{% if manager.vk_url %}<a href="{{ manager.vk_url }}" target="_blank">открыть</a>{% else %}—{% endif %}</td>
+              <td>{{ manager.game_id or '—' }}</td>
+              <td>
+                {% if manager.is_active %}<span style="color:#3ecf8e;">🟢 Активен</span>{% else %}<span style="color:#e56b6b;">🔴 Заблокирован</span>{% endif %}
+              </td>
+              <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                <form method="POST" action="{{ url_for('admin.manager_toggle_active', manager_id=manager.id) }}">
+                  {{ csrf_field() }}
+                  <button type="submit" class="{% if manager.is_active %}btn-danger{% else %}btn-success{% endif %}" style="font-size:12px; padding:5px 10px;">
+                    {% if manager.is_active %}🔒 Блок{% else %}🔓 Разблок{% endif %}
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.manager_reset_password', manager_id=manager.id) }}" onsubmit="return confirm('Сбросить пароль {{ manager.name }}?')">
+                  {{ csrf_field() }}
+                  <button type="submit" class="btn-primary" style="font-size:12px; padding:5px 10px;">🔑 Сброс пароля</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ БАЛАНС МЕНЕДЖЕРОВ ============ -->
+  <div class="card">
+    <div class="card-header">💰 Управление балансом менеджера</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.balance_add') }}">
+        {{ csrf_field() }}
+        <label>Выбери менеджера:</label>
+        <select name="manager_id" required>
+          <option value="">-- Выбери --</option>
+          {% for manager in managers %}
+            <option value="{{ manager.id }}">{{ manager.name }} (Баланс: {{ manager.balance }}G)</option>
+          {% endfor %}
+        </select>
+
+        <label>Действие:</label>
+        <select name="action" required>
+          <option value="add">➕ Добавить</option>
+          <option value="subtract">➖ Вычесть</option>
+        </select>
+
+        <label>Сумма (G):</label>
+        <input type="number" name="amount" min="1" step="0.01" required>
+
+        <label>Причина:</label>
+        <input type="text" name="reason" placeholder="Например: Бонус за топ" required>
+
+        <button type="submit" class="btn-primary">Выполнить</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📋 История изменения баланса</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>Менеджер</th><th>Сумма</th><th>Причина</th><th>Админ</th><th>Дата</th></tr>
+        </thead>
+        <tbody>
+          {% for log in balance_logs %}
+            <tr>
+              <td>{{ log.manager_name }}</td>
+              <td style="color: {% if log.amount_change > 0 %}#3ecf8e{% else %}#e56b6b{% endif %}">
+                {% if log.amount_change > 0 %}+{% endif %}{{ log.amount_change }}G
+              </td>
+              <td>{{ log.reason }}</td>
+              <td>{{ log.admin_name }}</td>
+              <td>{{ log.created_at }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ ГОЛДА ИГРОКАМ ============ -->
+  <div class="card">
+    <div class="card-header">🎮 Добавление голды игрокам (для топа)</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.player_add_balance') }}">
+        {{ csrf_field() }}
+        <label>VK профиль игрока (ссылка или ID):</label>
+        <input type="text" name="vk_input" placeholder="https://vk.com/id123456 или 123456" required>
+
+        <label>Сумма голды (G):</label>
+        <input type="number" name="amount" min="1" step="0.01" required>
+
+        <label>Причина/Комментарий:</label>
+        <input type="text" name="reason" placeholder="Например: Топ игроков #1" required>
+
+        <button type="submit" class="btn-primary">➕ Добавить голду</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📊 История топ игроков</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>Игрок</th><th>VK ID</th><th>Голда</th><th>Причина</th><th>Админ</th><th>Дата</th></tr>
+        </thead>
+        <tbody>
+          {% for log in player_balance_logs %}
+            <tr>
+              <td><strong>{{ log.lead_name }}</strong></td>
+              <td>{{ log.vk_id }}</td>
+              <td style="color: #3ecf8e; font-weight: bold;">+{{ log.amount }}G</td>
+              <td>{{ log.reason }}</td>
+              <td>{{ log.admin_name }}</td>
+              <td>{{ log.created_at }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ VK БЫСТРЫЙ ДОСТУП ============ -->
+  <div class="card">
+    <div class="card-header">🔗 Быстрая работа с VK</div>
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('admin.vk_quick_access') }}">
+        {{ csrf_field() }}
+        <label>Введи VK ID или ссылку:</label>
+        <input type="text" name="vk_input" placeholder="https://vk.com/id123456 или 123456" required>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" name="action" value="profile" class="btn-primary" style="flex: 1;">🔗 Открыть профиль</button>
+          <button type="submit" name="action" value="chat" class="btn-primary" style="flex: 1;">💬 Открыть чат</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ УДАЛЕНИЕ ЛИДОВ ============ -->
+  <div class="card">
+    <div class="card-header">🗑️ Управление лидами</div>
+    <div class="card-body">
+      <h3>Удалить лида</h3>
+      <form method="POST" action="{{ url_for('admin.lead_delete') }}">
+        {{ csrf_field() }}
+        <label>Выбери лида для удаления:</label>
+        <select name="lead_id" required>
+          <option value="">-- Выбери лида --</option>
+          {% for lead in all_leads %}
+            <option value="{{ lead.id }}">{{ lead.name }} (VK: {{ lead.vk_id }}) - менеджер: {{ lead.manager_name or '—' }}</option>
+          {% endfor %}
+        </select>
+
+        <label>Комментарий для менеджера (почему удалён):</label>
+        <textarea name="admin_comment" placeholder="Например: Некорректные данные, спам" required></textarea>
+
+        <button type="submit" class="btn-danger">🗑️ Удалить лида</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📋 Архив удаленных лидов</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>Имя</th><th>VK ID</th><th>Менеджер</th><th>Комментарий</th><th>Удален</th><th>Действия</th></tr>
+        </thead>
+        <tbody>
+          {% for log in deleted_leads %}
+            <tr>
+              <td><strong>{{ log.lead_name }}</strong></td>
+              <td>{{ log.lead_vk_id }}</td>
+              <td>{{ log.manager_name or '—' }}</td>
+              <td>{{ log.admin_comment }}</td>
+              <td>{{ log.deleted_at }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.lead_restore') }}" style="display: inline;">
+        {{ csrf_field() }}
+                  <input type="hidden" name="log_id" value="{{ log.id }}">
+                  <button type="submit" class="btn-success" style="font-size: 12px; padding: 5px 10px;">↩️ Восстановить</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ ВЫПЛАТЫ ============ -->
+  <div class="card">
+    <div class="card-header">📸 Загрузка доказательств выплат</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.payment_proof_upload') }}" enctype="multipart/form-data">
+        {{ csrf_field() }}
+        <label>Выбери вывод (опционально):</label>
+        <select name="withdrawal_id">
+          <option value="0">-- Не связана с выводом --</option>
+          {% for withdrawal in pending_withdrawals %}
+            <option value="{{ withdrawal.id }}">{{ withdrawal.manager_name }} - {{ withdrawal.requested_amount }}G</option>
+          {% endfor %}
+        </select>
+
+        <label>Загрузи скриншот:</label>
+        <input type="file" name="file" accept="image/*" required>
+
+        <label>Описание:</label>
+        <input type="text" name="description" placeholder="Описание выплаты" required>
+
+        <button type="submit" class="btn-primary">📤 Загрузить скриншот</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">💳 Добавить скриншот к одобренному выводу</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.withdrawal_attach_proof') }}" enctype="multipart/form-data">
+        {{ csrf_field() }}
+        <label>Выбери вывод:</label>
+        <select name="withdrawal_id" required>
+          <option value="">-- Выбери вывод --</option>
+          {% for withdrawal in approved_withdrawals %}
+            <option value="{{ withdrawal.id }}">{{ withdrawal.manager_name }} - {{ withdrawal.requested_amount }}G</option>
+          {% endfor %}
+        </select>
+
+        <label>Загрузи скриншот выплаты:</label>
+        <input type="file" name="file" accept="image/*" required>
+
+        <label>Описание (опционально):</label>
+        <input type="text" name="description" placeholder="Например: транзакция 12345">
+
+        <button type="submit" class="btn-primary">📸 Прикрепить скриншот</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📋 История выплаченных выводов</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>Менеджер</th><th>Сумма</th><th>Статус</th><th>Дата</th></tr>
+        </thead>
+        <tbody>
+          {% for withdrawal in paid_withdrawals %}
+            <tr>
+              <td>{{ withdrawal.manager_name }}</td>
+              <td>{{ withdrawal.requested_amount }}G</td>
+              <td>
+                {% if withdrawal.payment_proof_id %}
+                  <span style="color: #3ecf8e;">✅ Выплачено</span>
+                {% else %}
+                  <span style="color: #e9b949;">⏳ Ожидает скрина</span>
+                {% endif %}
+              </td>
+              <td>{{ withdrawal.updated_at }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">🏆 Фото топа игроков</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.top_player_photo_upload') }}" enctype="multipart/form-data">
+        {{ csrf_field() }}
+        <label>Загрузи фото:</label>
+        <input type="file" name="file" accept="image/*" required>
+
+        <label>Описание:</label>
+        <input type="text" name="description" placeholder="Топ #1 - Иван Петров" required>
+
+        <button type="submit" class="btn-primary">📤 Загрузить фото</button>
+      </form>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+        {% for photo in top_player_photos %}
+          <div style="background-color: #1b1f29; padding: 10px; border-radius: 6px; border: 1px solid #262b36;">
+            <img src="/{{ photo.file_path }}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 10px;">
+            <p style="font-size: 14px; margin: 0 0 10px 0;">{{ photo.description }}</p>
+            <form method="POST" action="{{ url_for('admin.top_player_photo_delete', photo_id=photo.id) }}">
+        {{ csrf_field() }}
+              <button type="submit" class="btn-danger" style="width: 100%; font-size: 12px; padding: 5px;" onclick="return confirm('Удалить?')">🗑️ Удалить</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ СКРИПТЫ ============ -->
+  <div class="card">
+    <div class="card-header">📝 Управление скриптами для переписки</div>
+    <div class="card-body">
+      <h3>Создать новый скрипт</h3>
+      <form method="POST" action="{{ url_for('admin.script_create') }}">
+        {{ csrf_field() }}
+        <label>Название:</label>
+        <input type="text" name="title" placeholder="Например: Приветствие новичков" required>
+
+        <label>Категория:</label>
+        <select name="category" required>
+          <option value="greeting">👋 Приветствие</option>
+          <option value="follow_up">📞 Напоминание</option>
+          <option value="offer">💰 Предложение</option>
+          <option value="warning">⚠️ Предупреждение</option>
+          <option value="closing">👋 Завершение</option>
+        </select>
+
+        <label>Текст скрипта:</label>
+        <textarea name="text" placeholder="Напиши текст сообщения..." required></textarea>
+
+        <button type="submit" class="btn-primary">📝 Создать скрипт</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">📚 Библиотека скриптов</div>
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+        {% for script in all_scripts %}
+          <div style="background-color: #1b1f29; padding: 15px; border-radius: 6px; border-left: 3px solid #6c8cff;">
+            <h4 style="margin-top: 0; color: #6c8cff;">{{ script.title }}</h4>
+            <div style="background-color: #0f1115; padding: 10px; border-radius: 4px; margin-bottom: 10px; max-height: 100px; overflow-y: auto;">
+              <p style="margin: 0; font-size: 13px;">{{ script.text }}</p>
+            </div>
+            <form method="POST" action="{{ url_for('admin.script_delete', script_id=script.id) }}">
+        {{ csrf_field() }}
+              <button type="submit" class="btn-danger" style="width: 100%; font-size: 12px; padding: 8px;" onclick="return confirm('Удалить?')">🗑️ Удалить</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.kpi-dashboard { display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 24px 0; }
+.kpi-box {
+  background: linear-gradient(135deg, #1b1f29, #171a21);
+  border: 1px solid #262b36; border-radius: 10px; padding: 14px 20px;
+  display:flex; flex-direction:column; gap:4px; min-width:120px;
+}
+.kpi-num { font-size:22px; font-weight:700; color:#6c8cff; }
+.kpi-label { font-size:12px; color:#8a90a2; }
+
+.admin-quick-nav { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.quick-nav-pill {
+  padding:9px 18px; border-radius:20px; background-color:#1b1f29;
+  border:1px solid #262b36; color:#e8e9ee; text-decoration:none; font-size:13px; font-weight:600;
+  transition: all 0.2s;
+}
+.quick-nav-pill:hover { border-color:#6c8cff; background-color:#20263a; }
+</style>
+{% endblock %}

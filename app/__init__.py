@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 
 from config import Config
 from . import db
@@ -24,6 +24,19 @@ def create_app(config_object=Config):
     app.before_request(csrf_protect)
     app.jinja_env.globals["csrf_token"] = csrf_token
     app.jinja_env.globals["csrf_field"] = csrf_field
+
+    @app.before_request
+    def force_profile_completion():
+        if not request.endpoint or request.endpoint == "static":
+            return
+        if request.endpoint.startswith(("auth.", "profile.", "uploads.")):
+            return
+        manager_id = session.get("manager_id")
+        if not manager_id or session.get("role") == "admin":
+            return
+        manager = db.query_one("SELECT profile_completed FROM managers WHERE id=?", (manager_id,))
+        if manager and not manager["profile_completed"]:
+            return redirect(url_for("profile.complete"))
 
     from .leads import vk_chat_url
     app.jinja_env.globals["vk_chat_url"] = vk_chat_url
@@ -56,10 +69,15 @@ def create_app(config_object=Config):
     from .achievements import bp as achievements_bp
     from .referrals import bp as referrals_bp
     from .ai_assistant import bp as ai_bp
+    from .admin_panel import admin_bp
+    from .payouts import bp as payouts_bp
+    from .support_tickets import bp as support_tickets_bp
+    from .profile import bp as profile_bp
 
     for bp in (auth_bp, leads_bp, scripts_bp, dashboard_bp, managers_bp,
                submissions_bp, withdrawals_bp, notifications_bp, uploads_bp,
-               journal_bp, game_bp, achievements_bp, referrals_bp, ai_bp):
+               journal_bp, game_bp, achievements_bp, referrals_bp, ai_bp,
+               admin_bp, payouts_bp, support_tickets_bp, profile_bp):
         app.register_blueprint(bp)
     
     @app.context_processor

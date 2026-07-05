@@ -3,124 +3,325 @@
 {% block title %}Выводы{% endblock %}
 
 {% block content %}
-<h1>💰 Выводы</h1>
-
-<div class="tip">
-  💡 Это ваш собственный баланс золота (начисляется за одобренные заявки по вашим лидам). 
-  Минимальный вывод — {{ min_withdrawal }}G. После заявки баланс сразу списывается.
-</div>
-
-<!-- КНОПКА ВЫВОДА ДЛЯ МЕНЕДЖЕРОВ -->
-{% if not is_admin %}
-<div class="card" style="margin-bottom:16px;border-color:var(--gold);">
-  <h2 style="font-size:14px;margin-top:0;">💰 Мой баланс: <span class="balance-pill">{{ "%.2f"|format(my_balance) }}G</span></h2>
-  
-  {% if my_balance >= min_withdrawal %}
-  <form method="post" action="{{ url_for('withdrawals.create') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label class="field" style="margin-bottom:6px;">
-      <span>Сумма вывода (от {{ min_withdrawal }}G)</span>
-      <input type="number" name="amount" min="{{ min_withdrawal }}" step="0.01" max="{{ my_balance }}" required>
-    </label>
-    <button class="btn btn-primary" type="submit">💰 Запросить вывод</button>
-  </form>
-  {% else %}
-  <p class="muted" style="margin-bottom:0;">
-    Наберите ещё {{ "%.2f"|format(min_withdrawal - my_balance) }}G, чтобы можно было запросить вывод.
-  </p>
-  {% endif %}
-</div>
-{% endif %}
-
-<!-- Для админа - настройка комиссии -->
-{% if is_admin %}
-<div class="card" style="margin-bottom:16px;">
-  <h2 style="font-size:14px;margin-top:0;">⚙️ Комиссия площадки</h2>
-  <form method="post" action="{{ url_for('withdrawals.set_commission') }}" class="inline">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="number" name="commission_pct" step="1" min="0" max="90" placeholder="20" style="width:80px;">
-    <span class="muted">%</span>
-    <button class="btn btn-soft btn-sm" type="submit">Сохранить</button>
-  </form>
-</div>
-{% endif %}
-
-<!-- Фильтр по статусу -->
-<form method="get" class="inline" style="margin-bottom:14px;">
-  <select name="status" onchange="this.form.submit()">
-    <option value="">Все</option>
-    <option value="awaiting_listing" {{ 'selected' if status_filter == 'awaiting_listing' }}>Ожидают выставления</option>
-    <option value="proof_submitted" {{ 'selected' if status_filter == 'proof_submitted' }}>Скриншот на проверке</option>
-    <option value="completed" {{ 'selected' if status_filter == 'completed' }}>Завершены</option>
-    <option value="rejected" {{ 'selected' if status_filter == 'rejected' }}>Отклонены</option>
-  </select>
-</form>
-
-<!-- Список выводов -->
-{% if withdrawals %}
-{% for w in withdrawals %}
-<div class="card" style="margin-bottom:14px;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-    <div>
-      <strong>{{ w.manager_name }}</strong>
-      <div class="muted" style="font-size:12px;margin-top:4px;">
-        Запрошено {{ "%.2f"|format(w.requested_amount) }}G
-        {% if w.list_price %}· выставить за <strong>{{ "%.2f"|format(w.list_price) }}G</strong>{% endif %}
-        {% if w.commission_pct %}(комиссия {{ w.commission_pct|round|int }}%){% endif %}
+<div class="withdrawals-page">
+  <div class="wd-header">
+    <h1 style="margin:0;">💰 Выводы</h1>
+    {% if not is_admin %}
+      <div class="balance-chip">
+        <span>Мой баланс</span>
+        <strong>{{ "%.2f"|format(my_balance) }}G</strong>
       </div>
-    </div>
-    <span class="badge badge-{{ {'awaiting_listing':'pending','proof_submitted':'contacted','completed':'completed','rejected':'rejected'}.get(w.status, 'pending') }}">
-      {{ {'awaiting_listing': '⏳ Ожидает выставления', 'proof_submitted': '📸 Скриншот на проверке', 'completed': '✅ Завершён', 'rejected': '❌ Отклонён'}.get(w.status, w.status) }}
-    </span>
+    {% endif %}
   </div>
 
-  <!-- История сообщений -->
-  <div class="thread">
-    {% for e in events_by_withdrawal[w.id] %}
-    <div class="thread-msg {{ e.actor }}">
-      <div class="thread-meta">
-        {{ {'system':'Система','manager':'Менеджер','admin':'Администратор'}[e.actor] }} · {{ e.created_at[:16] }}
+  {% if not is_admin %}
+    {% if pending_block %}
+      <div class="banner banner-warning">
+        <span class="banner-icon">⏳</span>
+        <div>
+          <strong>Новый вывод пока недоступен</strong>
+          <p>Дождитесь, пока текущий вывод пройдёт полную проверку администратором до конца.</p>
+        </div>
       </div>
-      {{ e.message }}
-      {% if e.screenshot %}
-      <a href="{{ url_for('uploads.serve', filename=e.screenshot) }}" target="_blank">
-        <img src="{{ url_for('uploads.serve', filename=e.screenshot) }}" alt="Скриншот">
-      </a>
-      {% endif %}
-    </div>
+    {% else %}
+      <div class="card wd-request-card">
+        <div class="card-header">💸 Запросить вывод</div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('withdrawals.create') }}" class="row-form">
+            {{ csrf_field() }}
+            <div class="field-grow">
+              <label>Сумма (минимум {{ min_withdrawal }}G)</label>
+              <input type="number" name="amount" min="{{ min_withdrawal }}" step="0.01" required>
+            </div>
+            <button type="submit" class="btn-primary btn-auto">Запросить</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="filters-row">
+    <a href="{{ url_for('withdrawals.index') }}" class="filter-pill {% if not status_filter %}active{% endif %}">Все</a>
+    <a href="{{ url_for('withdrawals.index', status='awaiting_listing') }}" class="filter-pill {% if status_filter=='awaiting_listing' %}active{% endif %}">⏳ Ожидает</a>
+    <a href="{{ url_for('withdrawals.index', status='proof_submitted') }}" class="filter-pill {% if status_filter=='proof_submitted' %}active{% endif %}">📸 На проверке</a>
+    <a href="{{ url_for('withdrawals.index', status='completed') }}" class="filter-pill {% if status_filter=='completed' %}active{% endif %}">✅ Завершено</a>
+    <a href="{{ url_for('withdrawals.index', status='rejected') }}" class="filter-pill {% if status_filter=='rejected' %}active{% endif %}">❌ Отклонено</a>
+  </div>
+
+  {% if not withdrawals %}
+    <div class="empty-state">Пока нет выводов</div>
+  {% endif %}
+
+  <div class="wd-list">
+    {% for w in withdrawals %}
+      <div class="wd-card">
+        <div class="wd-card-top">
+          <div class="wd-title">
+            <span class="wd-id">#{{ w.id }}</span>
+            {% if is_admin %}<span class="wd-manager">{{ w.manager_name }}</span>{% endif %}
+            <span class="wd-amount">{{ "%.2f"|format(w.requested_amount) }}G</span>
+          </div>
+          <span class="status-badge status-{{ w.status }}{% if w.status == 'completed' and not w.payout_admin_confirmed %} status-waiting-payout{% endif %}">
+            {% if w.status == 'awaiting_listing' %}⏳ Ожидает листинга
+            {% elif w.status == 'proof_submitted' %}📸 На проверке
+            {% elif w.status == 'completed' and w.payout_admin_confirmed %}✅ Полностью завершено
+            {% elif w.status == 'completed' and w.payout_confirmed %}🔍 Проверка выплаты
+            {% elif w.status == 'completed' %}💰 Одобрено, ждём скрин от менеджера
+            {% elif w.status == 'rejected' %}❌ Отклонено
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="wd-meta">
+          <span>Комиссия <b>{{ w.commission_pct }}%</b></span>
+          <span>Цена листинга <b>{{ "%.2f"|format(w.list_price) }}G</b></span>
+          <span class="wd-date">{{ w.created_at }}</span>
+        </div>
+
+        {% set screenshots = events_by_withdrawal.get(w.id, [])|selectattr('screenshot')|list %}
+        {% if screenshots %}
+          <div class="screenshots-row">
+            {% for event in screenshots %}
+              <a href="{{ url_for('uploads.serve', filename=event.screenshot) }}" target="_blank" class="screenshot-thumb">
+                <img src="{{ url_for('uploads.serve', filename=event.screenshot) }}" alt="Скриншот">
+                <span>{% if event.actor == 'admin' %}От админа{% elif event.actor == 'manager' %}От менеджера{% endif %} · {{ event.created_at }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if events_by_withdrawal.get(w.id) %}
+          <details class="wd-timeline">
+            <summary>Полная история ({{ events_by_withdrawal[w.id]|length }})</summary>
+            {% for event in events_by_withdrawal[w.id] %}
+              <div class="event-item">
+                <div class="event-meta">
+                  <span>{% if event.actor == 'admin' %}👨‍💼 Админ{% elif event.actor == 'manager' %}👤 Менеджер{% else %}🤖 Система{% endif %}</span>
+                  <span class="event-time">{{ event.created_at }}</span>
+                </div>
+                <p>{{ event.message }}</p>
+              </div>
+            {% endfor %}
+          </details>
+        {% endif %}
+
+        <!-- Менеджер: скриншот продажи скина (только один раз, без замены) -->
+        {% if not is_admin and w.status == 'awaiting_listing' %}
+          <form method="POST" action="{{ url_for('withdrawals.submit_proof', wid=w.id) }}" enctype="multipart/form-data" class="action-box action-box-blue">
+            {{ csrf_field() }}
+            <label>📎 Прикрепи скриншот продажи скина</label>
+            <div class="upload-row">
+              <input type="file" name="screenshot" accept="image/*" required>
+              <button type="submit" class="btn-primary btn-auto">Отправить</button>
+            </div>
+          </form>
+        {% endif %}
+
+        <!-- Админ: подтвердить/отклонить вывод -->
+        {% if is_admin and w.status in ['awaiting_listing', 'proof_submitted'] %}
+          <div class="admin-actions">
+            <form method="POST" action="{{ url_for('withdrawals.complete', wid=w.id) }}" class="admin-action-form">
+              {{ csrf_field() }}
+              <input type="text" name="comment" placeholder="Комментарий (опц.)">
+              <button type="submit" class="btn-success">✅ Подтвердить</button>
+            </form>
+            <form method="POST" action="{{ url_for('withdrawals.reject', wid=w.id) }}" class="admin-action-form">
+              {{ csrf_field() }}
+              <input type="text" name="comment" placeholder="Причина отклонения">
+              <button type="submit" class="btn-danger">❌ Отклонить</button>
+            </form>
+          </div>
+        {% endif %}
+
+        <!-- Менеджер: прислать скрин получения выплаты (только один раз, без замены) -->
+        {% if not is_admin and w.status == 'completed' and not w.payout_confirmed %}
+          <form method="POST" action="{{ url_for('withdrawals.confirm_payout', wid=w.id) }}" enctype="multipart/form-data" class="action-box action-box-gold">
+            <label>💰 Ты получил выплату? Прикрепи скриншот в подтверждение</label>
+            {{ csrf_field() }}
+            <div class="upload-row">
+              <input type="file" name="screenshot" accept="image/*" required>
+              <button type="submit" class="btn-gold btn-auto">Отправить на проверку</button>
+            </div>
+          </form>
+        {% endif %}
+
+        <!-- Менеджер ждёт: скрин отправлен, но админ ещё не подтвердил -->
+        {% if not is_admin and w.status == 'completed' and w.payout_confirmed and not w.payout_admin_confirmed %}
+          <div class="waiting-note">🔍 Скриншот отправлен, ожидаем финальной проверки администратором</div>
+        {% endif %}
+
+        <!-- Админ: финальное подтверждение (со своим скрином-доказательством) -->
+        {% if is_admin and w.status == 'completed' and w.payout_confirmed and not w.payout_admin_confirmed %}
+          <div class="action-box action-box-gold">
+            <label>🔍 Менеджер прислал скрин получения выплаты. Подтверди своим скриншотом-доказательством:</label>
+            <form method="POST" action="{{ url_for('withdrawals.admin_confirm_payout', wid=w.id) }}" enctype="multipart/form-data" style="margin-bottom:10px;">
+              {{ csrf_field() }}
+              <div class="upload-row">
+                <input type="file" name="admin_screenshot" accept="image/*" required>
+                <input type="text" name="comment" placeholder="Комментарий (опц.)" style="flex:1; min-width:140px;">
+                <button type="submit" class="btn-gold btn-auto">✅ Подтвердить окончательно</button>
+              </div>
+            </form>
+            <form method="POST" action="{{ url_for('withdrawals.admin_reject_payout', wid=w.id) }}">
+              {{ csrf_field() }}
+              <div class="upload-row">
+                <input type="text" name="comment" placeholder="Причина отклонения скрина менеджера">
+                <button type="submit" class="btn-danger btn-auto">❌ Отклонить скрин</button>
+              </div>
+            </form>
+          </div>
+        {% endif %}
+      </div>
     {% endfor %}
   </div>
 
-  <!-- Для менеджера - отправка скриншота продажи -->
-  {% if w.status == 'awaiting_listing' and (is_admin or w.manager_id == current_manager.id) %}
-  <form method="post" action="{{ url_for('withdrawals.submit_proof', wid=w.id) }}" enctype="multipart/form-data" style="margin-top:8px;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label class="field">
-      <span>📸 Скриншот продажи</span>
-      <input type="file" name="screenshot" accept="image/*" required>
-    </label>
-    <button class="btn btn-primary btn-sm" type="submit">Прислать скриншот</button>
-  </form>
-  {% endif %}
-
-  <!-- Для админа - подтверждение/отклонение -->
-  {% if is_admin and w.status in ('awaiting_listing', 'proof_submitted') %}
-  <div style="margin-top:8px;display:flex;gap:8px;">
-    <form method="post" action="{{ url_for('withdrawals.complete', wid=w.id) }}" enctype="multipart/form-data" class="inline">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="text" name="comment" placeholder="Комментарий" style="width:150px;">
-      <button class="btn btn-success btn-sm" type="submit">✅ Подтвердить</button>
-    </form>
-    <form method="post" action="{{ url_for('withdrawals.reject', wid=w.id) }}" class="inline">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="text" name="comment" placeholder="Причина" style="width:150px;">
-      <button class="btn btn-danger btn-sm" type="submit">❌ Отклонить</button>
-    </form>
+  {% if is_admin %}
+  <div class="card" style="margin-top:24px;">
+    <div class="card-header">⚙️ Комиссия площадки</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('withdrawals.set_commission') }}" class="row-form">
+        {{ csrf_field() }}
+        <div class="field-grow">
+          <label>Комиссия (%)</label>
+          <input type="number" name="commission_pct" min="0" max="90" step="0.1" required>
+        </div>
+        <button type="submit" class="btn-primary btn-auto">Сохранить</button>
+      </form>
+    </div>
   </div>
   {% endif %}
 </div>
-{% endfor %}
-{% else %}
-<div class="card"><p class="muted">Нет заявок на вывод.</p></div>
-{% endif %}
+
+<style>
+.wd-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+}
+.balance-chip {
+  background: linear-gradient(135deg, #1b1f29, #171a21);
+  border: 1px solid #262b36; border-radius: 10px; padding: 10px 18px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.balance-chip span { color: #8a90a2; font-size: 12px; }
+.balance-chip strong { color: #3ecf8e; font-size: 20px; }
+
+.banner {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 16px; border-radius: 10px; margin-bottom: 20px;
+}
+.banner-warning { background: rgba(233,185,73,0.08); border: 1px solid rgba(233,185,73,0.3); }
+.banner-icon { font-size: 26px; }
+.banner strong { color: #e9b949; }
+.banner p { margin: 6px 0 0 0; font-size: 13px; color: #c9ccd6; line-height: 1.5; }
+
+.wd-request-card { border-left: 3px solid #6c8cff; margin-bottom: 20px; }
+
+.row-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.field-grow { flex: 1; min-width: 180px; }
+.field-grow input { width: 100%; }
+.btn-auto { width: auto !important; padding: 10px 24px !important; }
+
+.filters-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.filter-pill {
+  padding: 7px 15px; border-radius: 20px; background-color: #1b1f29;
+  border: 1px solid #262b36; color: #8a90a2; text-decoration: none;
+  font-size: 13px; transition: all 0.2s; white-space: nowrap;
+}
+.filter-pill:hover { border-color: #6c8cff; color: #e8e9ee; }
+.filter-pill.active { background-color: #6c8cff; color: white; border-color: #6c8cff; }
+
+.empty-state { text-align: center; padding: 50px 20px; color: #8a90a2; background: #171a21; border-radius: 10px; }
+
+.wd-list { display: flex; flex-direction: column; gap: 14px; }
+.wd-card {
+  background-color: #171a21; border: 1px solid #262b36; border-radius: 12px;
+  padding: 16px; transition: border-color 0.2s;
+}
+.wd-card:hover { border-color: #33394a; }
+
+.wd-card-top {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 10px;
+}
+.wd-title { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.wd-id { color: #8a90a2; font-size: 13px; }
+.wd-manager { font-weight: 600; }
+.wd-amount { color: #3ecf8e; font-weight: 700; font-size: 16px; }
+
+.status-badge {
+  padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.status-awaiting_listing { background: rgba(233,185,73,0.15); color: #e9b949; }
+.status-proof_submitted { background: rgba(108,140,255,0.15); color: #6c8cff; }
+.status-completed { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+.status-waiting-payout { background: rgba(255,215,0,0.15); color: #ffd700; }
+.status-rejected { background: rgba(229,107,107,0.15); color: #e56b6b; }
+
+.wd-meta { display: flex; gap: 18px; flex-wrap: wrap; color: #8a90a2; font-size: 12px; margin-bottom: 10px; }
+.wd-meta b { color: #e8e9ee; }
+.wd-date { margin-left: auto; }
+
+.screenshots-row {
+  display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0;
+}
+.screenshot-thumb {
+  display: flex; flex-direction: column; gap: 6px; text-decoration: none;
+  width: 140px;
+}
+.screenshot-thumb img {
+  width: 140px; height: 100px; object-fit: cover; border-radius: 8px;
+  border: 1px solid #262b36; transition: border-color 0.2s;
+}
+.screenshot-thumb:hover img { border-color: #6c8cff; }
+.screenshot-thumb span {
+  font-size: 11px; color: #8a90a2; text-align: center;
+}
+
+.wd-timeline { margin: 10px 0; }
+.wd-timeline summary {
+  cursor: pointer; color: #6c8cff; font-size: 13px; padding: 6px 0;
+  list-style: none;
+}
+.wd-timeline summary::-webkit-details-marker { display: none; }
+.wd-timeline summary::before { content: "▸ "; }
+.wd-timeline[open] summary::before { content: "▾ "; }
+.event-item { padding: 8px 0 8px 12px; border-left: 2px solid #262b36; margin-top: 6px; }
+.event-meta { display: flex; justify-content: space-between; font-size: 11px; color: #8a90a2; }
+.event-item p { margin: 4px 0; font-size: 13px; }
+
+.action-box {
+  margin-top: 12px; padding: 14px; border-radius: 8px; background-color: #1b1f29;
+}
+.action-box-blue { border-left: 3px solid #6c8cff; }
+.action-box-gold { border-left: 3px solid #ffd700; background: rgba(255,215,0,0.06); }
+.action-box label { display: block; margin-bottom: 10px; font-size: 13px; color: #c9ccd6; font-weight: 500; }
+.upload-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.upload-row input[type="file"] { flex: 1; min-width: 180px; }
+.upload-row input[type="text"] { flex: 1; min-width: 140px; }
+
+.btn-gold {
+  background-color: #ffd700; color: #0f1115; border: none; border-radius: 6px;
+  padding: 10px 20px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+}
+.btn-gold:hover { opacity: 0.85; }
+
+.admin-actions { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.admin-action-form { flex: 1; min-width: 220px; display: flex; gap: 8px; }
+.admin-action-form input[type="text"] { flex: 1; }
+
+.waiting-note {
+  margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px;
+  background: rgba(255,215,0,0.06); border: 1px dashed rgba(255,215,0,0.3); color: #ffd700;
+}
+
+.payouts-section { margin-top: 36px; }
+.payouts-section h2 { font-size: 18px; margin-bottom: 16px; }
+.payout-card { border-color: rgba(62,207,142,0.25); }
+
+@media (max-width: 768px) {
+  .admin-actions { flex-direction: column; }
+  .admin-action-form { flex-direction: column; }
+  .wd-date { margin-left: 0; }
+}
+</style>
 {% endblock %}

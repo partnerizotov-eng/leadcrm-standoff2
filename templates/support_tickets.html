@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Тикеты поддержки{% endblock %}
+
+{% block content %}
+<div class="tickets-page">
+  <h1>🎫 Тикеты поддержки</h1>
+
+  <div class="card new-ticket-card">
+    <div class="card-header">✉️ Новое обращение</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('support_tickets.create') }}">
+        {{ csrf_field() }}
+        <label>Тема</label>
+        <input type="text" name="subject" placeholder="Коротко о проблеме" required>
+        <label>Сообщение</label>
+        <textarea name="message" placeholder="Опиши подробнее..." required></textarea>
+        <button type="submit" class="btn-primary btn-auto">Создать обращение</button>
+      </form>
+    </div>
+  </div>
+
+  {% if not tickets %}
+    <div class="empty-state">Обращений пока нет</div>
+  {% else %}
+    <div class="ticket-list">
+      {% for t in tickets %}
+        <a href="{{ url_for('support_tickets.detail', ticket_id=t.id) }}" class="ticket-row">
+          <div class="ticket-row-main">
+            <span class="ticket-id">#{{ t.id }}</span>
+            <span class="ticket-subject">{{ t.subject }}</span>
+            {% if is_admin %}<span class="ticket-manager">от {{ t.manager_name }}</span>{% endif %}
+          </div>
+          <div class="ticket-row-side">
+            <span class="msg-count">💬 {{ t.message_count }}</span>
+            <span class="ticket-date">{{ t.updated_at }}</span>
+            <span class="status-pill {% if t.status == 'open' %}status-open{% else %}status-closed{% endif %}">
+              {% if t.status == 'open' %}🟦 Открыт{% else %}✅ Закрыт{% endif %}
+            </span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.tickets-page h1 { margin-bottom: 20px; }
+
+.new-ticket-card { border-left: 3px solid #6c8cff; margin-bottom: 24px; }
+.btn-auto { width: auto !important; padding: 10px 24px !important; }
+
+.empty-state {
+  text-align: center; padding: 50px 20px; color: #8a90a2;
+  background: #171a21; border-radius: 10px;
+}
+
+.ticket-list { display: flex; flex-direction: column; gap: 10px; }
+
+.ticket-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap;
+  background-color: #171a21; border: 1px solid #262b36; border-radius: 10px;
+  padding: 14px 18px; text-decoration: none; color: inherit;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.ticket-row:hover { border-color: #6c8cff; transform: translateY(-1px); }
+
+.ticket-row-main { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.ticket-id { color: #8a90a2; font-size: 13px; flex-shrink: 0; }
+.ticket-subject { font-weight: 600; font-size: 15px; color: #e8e9ee; }
+.ticket-manager { color: #6c8cff; font-size: 13px; }
+
+.ticket-row-side { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.msg-count { font-size: 13px; color: #8a90a2; }
+.ticket-date { font-size: 12px; color: #8a90a2; }
+
+.status-pill {
+  padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.status-open { background: rgba(108,140,255,0.15); color: #6c8cff; }
+.status-closed { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+
+@media (max-width: 640px) {
+  .ticket-row { flex-direction: column; align-items: flex-start; }
+  .ticket-row-side { width: 100%; justify-content: space-between; }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Мой профиль{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+  <h1>👤 Мой профиль</h1>
+
+  <div class="card">
+    <div class="card-header">📝 Данные профиля</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('profile.settings') }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="action" value="profile">
+
+        <label>ФИО</label>
+        <input type="text" name="full_name" value="{{ manager.name }}" required>
+
+        <label>Email</label>
+        <input type="email" name="email" value="{{ manager.email or '' }}" required>
+
+        <label>Ссылка на VK</label>
+        <input type="text" name="vk_url" value="{{ manager.vk_url or '' }}" required>
+
+        <label>ID в Standoff 2</label>
+        <input type="text" name="game_id" value="{{ manager.game_id or '' }}" required>
+
+        <button type="submit" class="btn-primary btn-auto">💾 Сохранить</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">🔑 Логин</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('profile.settings') }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="action" value="login">
+
+        <label>Текущий логин: <b>{{ manager.login }}</b></label>
+        <label>Новый логин</label>
+        <input type="text" name="new_login" placeholder="новый логин" required>
+
+        <label>Текущий пароль (для подтверждения)</label>
+        <input type="password" name="current_password_login" required>
+
+        <button type="submit" class="btn-primary btn-auto">Изменить логин</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">🔒 Пароль</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('profile.settings') }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="action" value="password">
+
+        <label>Текущий пароль</label>
+        <input type="password" name="current_password_pwd" required>
+
+        <label>Новый пароль (минимум 6 символов)</label>
+        <input type="password" name="new_password" required>
+
+        <label>Повтори новый пароль</label>
+        <input type="password" name="new_password2" required>
+
+        <button type="submit" class="btn-primary btn-auto">Изменить пароль</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+.settings-page label { display: block; margin-top: 12px; margin-bottom: 6px; font-size: 13px; color: #c9ccd6; }
+.settings-page label:first-child { margin-top: 0; }
+.settings-page input { width: 100%; }
+.btn-auto { width: auto !important; padding: 10px 24px !important; margin-top: 14px !important; }
+</style>
+{% endblock %}

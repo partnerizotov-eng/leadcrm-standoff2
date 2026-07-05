@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Рассылка{% endblock %}
+
+{% block content %}
+<div class="messaging-page">
+  <h1>📢 Массовая рассылка</h1>
+
+  <div class="card" style="border-left:3px solid #6c8cff;">
+    <div class="card-header">✉️ Новое сообщение</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.messaging_send') }}">
+        {{ csrf_field() }}
+
+        <label class="all-checkbox-row">
+          <input type="checkbox" name="send_to_all" value="1" id="send-all-checkbox">
+          <span>Отправить всем менеджерам</span>
+        </label>
+
+        <div id="manager-select-list" class="manager-select-list">
+          {% for m in managers %}
+            <label class="manager-checkbox-row">
+              <input type="checkbox" name="manager_ids" value="{{ m.id }}" class="manager-checkbox">
+              <span>{{ m.name }} <span class="muted-small">({{ m.login }})</span></span>
+            </label>
+          {% endfor %}
+        </div>
+
+        <label>Текст сообщения</label>
+        <textarea name="message" placeholder="Например: Завтра профилактика с 2 до 4 ночи" required></textarea>
+
+        <button type="submit" class="btn-primary btn-auto">📤 Отправить</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+.btn-auto { width: auto !important; padding: 10px 24px !important; margin-top: 14px !important; }
+.all-checkbox-row { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.all-checkbox-row input { width:auto; }
+.manager-select-list {
+  max-height: 240px; overflow-y: auto; background:#0f1115;
+  border:1px solid #262b36; border-radius:8px; padding:10px; margin-bottom:14px;
+}
+.manager-checkbox-row { display:flex; align-items:center; gap:8px; padding:6px 0; }
+.manager-checkbox-row input { width:auto; }
+.muted-small { color:#8a90a2; font-size:12px; }
+</style>
+
+<script>
+document.getElementById('send-all-checkbox').addEventListener('change', function() {
+  const list = document.getElementById('manager-select-list');
+  const checkboxes = document.querySelectorAll('.manager-checkbox');
+  if (this.checked) {
+    list.style.opacity = '0.4';
+    list.style.pointerEvents = 'none';
+    checkboxes.forEach(cb => cb.disabled = true);
+  } else {
+    list.style.opacity = '1';
+    list.style.pointerEvents = 'auto';
+    checkboxes.forEach(cb => cb.disabled = false);
+  }
+});
+</script>
+{% endblock %}

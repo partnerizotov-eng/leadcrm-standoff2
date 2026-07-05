@@ -32,7 +32,7 @@ def mark_read(notif_id):
     if not row or row["manager_id"] != session["manager_id"]:
         return redirect(url_for("dashboard.index"))
     execute("UPDATE notifications SET is_read=1 WHERE id=?", (notif_id,))
-    return redirect(row["link"] or url_for("dashboard.index"))
+    return redirect(row["link"] or url_for("notifications.index"))
 
 
 @bp.route("/notifications/read-all", methods=["POST"])

@@ -168,7 +168,6 @@ CREATE TABLE IF NOT EXISTS activity (
     created_at  TEXT    DEFAULT (datetime('now'))
 );
 
--- Игровые аккаунты (Standoff 2)
 CREATE TABLE IF NOT EXISTS game_accounts (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     lead_id      INTEGER NOT NULL,
@@ -191,7 +190,6 @@ CREATE TABLE IF NOT EXISTS game_accounts (
 CREATE INDEX IF NOT EXISTS idx_game_accounts_lead ON game_accounts(lead_id);
 CREATE INDEX IF NOT EXISTS idx_game_accounts_game ON game_accounts(game_id);
 
--- Выводы голды в игру
 CREATE TABLE IF NOT EXISTS game_withdrawals (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     lead_id        INTEGER NOT NULL,
@@ -213,7 +211,6 @@ CREATE INDEX IF NOT EXISTS idx_game_withdrawals_lead ON game_withdrawals(lead_id
 CREATE INDEX IF NOT EXISTS idx_game_withdrawals_manager ON game_withdrawals(manager_id);
 CREATE INDEX IF NOT EXISTS idx_game_withdrawals_status ON game_withdrawals(status);
 
--- Достижения менеджеров
 CREATE TABLE IF NOT EXISTS manager_achievements (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     manager_id     INTEGER NOT NULL,
@@ -227,7 +224,6 @@ CREATE TABLE IF NOT EXISTS manager_achievements (
 );
 CREATE INDEX IF NOT EXISTS idx_manager_achievements_manager ON manager_achievements(manager_id);
 
--- Участия лидов в раундах (для рейтинга игроков)
 CREATE TABLE IF NOT EXISTS participations (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     lead_id     INTEGER NOT NULL,
@@ -240,7 +236,6 @@ CREATE TABLE IF NOT EXISTS participations (
 );
 CREATE INDEX IF NOT EXISTS idx_participations_lead ON participations(lead_id);
 
--- Реферальная система
 CREATE TABLE IF NOT EXISTS referrals (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     referrer_id   INTEGER NOT NULL,
@@ -254,7 +249,6 @@ CREATE TABLE IF NOT EXISTS referrals (
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_id);
 
--- История статусов лидов
 CREATE TABLE IF NOT EXISTS lead_status_history (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     lead_id     INTEGER NOT NULL,
@@ -266,7 +260,6 @@ CREATE TABLE IF NOT EXISTS lead_status_history (
 );
 CREATE INDEX IF NOT EXISTS idx_lead_status_lead ON lead_status_history(lead_id);
 
--- Тикеты поддержки
 CREATE TABLE IF NOT EXISTS support_tickets (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     manager_id  INTEGER NOT NULL,
@@ -280,7 +273,6 @@ CREATE TABLE IF NOT EXISTS support_tickets (
 CREATE INDEX IF NOT EXISTS idx_support_tickets_manager ON support_tickets(manager_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
 
--- Сообщения в тикетах поддержки
 CREATE TABLE IF NOT EXISTS support_messages (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     ticket_id     INTEGER NOT NULL,
@@ -294,7 +286,6 @@ CREATE TABLE IF NOT EXISTS support_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id);
 
--- Пользовательские настройки менеджеров
 CREATE TABLE IF NOT EXISTS manager_settings (
     manager_id INTEGER NOT NULL,
     key        TEXT    NOT NULL,
@@ -302,6 +293,104 @@ CREATE TABLE IF NOT EXISTS manager_settings (
     updated_at TEXT    DEFAULT (datetime('now')),
     PRIMARY KEY (manager_id, key),
     FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+-- ==================== НОВЫЕ ТАБЛИЦЫ ДЛЯ АДМИН ФУНКЦИЙ ====================
+
+CREATE TABLE IF NOT EXISTS balance_logs (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id    INTEGER NOT NULL,
+    amount_change REAL    NOT NULL,
+    reason        TEXT    NOT NULL,
+    admin_id      INTEGER NOT NULL,
+    created_at    TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_balance_logs_manager ON balance_logs(manager_id);
+
+CREATE TABLE IF NOT EXISTS player_balance_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id     INTEGER NOT NULL,
+    vk_id       TEXT,
+    amount      REAL    NOT NULL,
+    reason      TEXT    NOT NULL,
+    admin_id    INTEGER NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_player_balance_logs_lead ON player_balance_logs(lead_id);
+
+CREATE TABLE IF NOT EXISTS deleted_leads_log (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id        INTEGER NOT NULL,
+    lead_name      TEXT    NOT NULL,
+    lead_vk_id     TEXT,
+    manager_id     INTEGER NOT NULL,
+    admin_comment  TEXT,
+    admin_id       INTEGER NOT NULL,
+    deleted_at     TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_deleted_leads_log_manager ON deleted_leads_log(manager_id);
+
+CREATE TABLE IF NOT EXISTS payment_proofs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    withdrawal_id INTEGER,
+    file_path   TEXT    NOT NULL,
+    description TEXT    NOT NULL,
+    admin_id    INTEGER NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (withdrawal_id) REFERENCES withdrawals(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_payment_proofs_withdrawal ON payment_proofs(withdrawal_id);
+
+CREATE TABLE IF NOT EXISTS top_player_photos (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_path   TEXT    NOT NULL,
+    description TEXT    NOT NULL,
+    admin_id    INTEGER NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (admin_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS manager_stats (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id           INTEGER NOT NULL UNIQUE,
+    total_leads          INTEGER DEFAULT 0,
+    converted_leads      INTEGER DEFAULT 0,
+    total_withdrawals    REAL    DEFAULT 0,
+    approved_withdrawals REAL    DEFAULT 0,
+    balance              REAL    DEFAULT 0,
+    last_updated         TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS message_scripts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT    NOT NULL,
+    text        TEXT    NOT NULL,
+    category    TEXT    NOT NULL,
+    created_by  INTEGER NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    is_active   INTEGER DEFAULT 1,
+    FOREIGN KEY (created_by) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_message_scripts_category ON message_scripts(category);
+
+CREATE TABLE IF NOT EXISTS script_usage_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    script_id   INTEGER NOT NULL,
+    manager_id  INTEGER NOT NULL,
+    lead_id     INTEGER,
+    vk_id       TEXT,
+    used_at     TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (script_id) REFERENCES message_scripts(id) ON DELETE CASCADE,
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE,
+    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
 );
 """
 
@@ -374,19 +463,32 @@ def _migrate(conn):
          "ALTER TABLE managers ADD COLUMN total_seconds_worked INTEGER NOT NULL DEFAULT 0"),
         ("managers", "balance", "ALTER TABLE managers ADD COLUMN balance REAL NOT NULL DEFAULT 0"),
         ("managers", "total_earned", "ALTER TABLE managers ADD COLUMN total_earned REAL NOT NULL DEFAULT 0"),
-        # Игровые поля лида (Standoff 2) — используются в game/standoff2/models
         ("leads", "game_rank", "ALTER TABLE leads ADD COLUMN game_rank TEXT DEFAULT ''"),
         ("leads", "game_stats", "ALTER TABLE leads ADD COLUMN game_stats TEXT DEFAULT '{}'"),
         ("leads", "game_verified", "ALTER TABLE leads ADD COLUMN game_verified INTEGER NOT NULL DEFAULT 0"),
         ("leads", "game_verified_at", "ALTER TABLE leads ADD COLUMN game_verified_at TEXT"),
-        # Категория скрипта — используется в scripts.py
         ("scripts", "category", "ALTER TABLE scripts ADD COLUMN category TEXT DEFAULT 'Другое'"),
+        ("withdrawals", "payment_proof_id", "ALTER TABLE withdrawals ADD COLUMN payment_proof_id INTEGER"),
+        ("withdrawals", "payout_confirmed", "ALTER TABLE withdrawals ADD COLUMN payout_confirmed INTEGER NOT NULL DEFAULT 0"),
+        ("withdrawals", "payout_screenshot", "ALTER TABLE withdrawals ADD COLUMN payout_screenshot TEXT"),
+        ("withdrawals", "payout_admin_confirmed", "ALTER TABLE withdrawals ADD COLUMN payout_admin_confirmed INTEGER NOT NULL DEFAULT 0"),
+        ("withdrawals", "payout_admin_screenshot", "ALTER TABLE withdrawals ADD COLUMN payout_admin_screenshot TEXT"),
+        ("withdrawals", "payout_admin_comment", "ALTER TABLE withdrawals ADD COLUMN payout_admin_comment TEXT"),
+        ("support_messages", "attachment_path", "ALTER TABLE support_messages ADD COLUMN attachment_path TEXT"),
+        ("support_messages", "attachment_type", "ALTER TABLE support_messages ADD COLUMN attachment_type TEXT"),
+        ("managers", "email", "ALTER TABLE managers ADD COLUMN email TEXT"),
+        ("managers", "vk_url", "ALTER TABLE managers ADD COLUMN vk_url TEXT"),
+        ("managers", "game_id", "ALTER TABLE managers ADD COLUMN game_id TEXT"),
+        ("managers", "profile_completed", "ALTER TABLE managers ADD COLUMN profile_completed INTEGER NOT NULL DEFAULT 0"),
+        ("managers", "consent_given_at", "ALTER TABLE managers ADD COLUMN consent_given_at TEXT"),
     ]
     for table, column, ddl in migrations:
         if not _column_exists(conn, table, column):
-            conn.execute(ddl)
+            try:
+                conn.execute(ddl)
+            except:
+                pass
     
-    # Проверка на существование manager_id в balance_ledger
     if not _column_exists(conn, "balance_ledger", "manager_id"):
         try:
             conn.execute("ALTER TABLE balance_ledger ADD COLUMN manager_id INTEGER")

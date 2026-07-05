@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Топ менеджеров{% endblock %}
+
+{% block content %}
+<div class="top-managers-page">
+  <h1>🏆 Топ менеджеров</h1>
+
+  {% if is_admin %}
+  <div class="liquidity-summary">
+    <div class="liquidity-chip chip-green">🟢 {{ green_count }} эффективных</div>
+    <div class="liquidity-chip chip-yellow">🟡 {{ yellow_count }} стабильных</div>
+    <div class="liquidity-chip chip-orange">🟠 {{ orange_count }} требуют внимания</div>
+    <div class="liquidity-chip chip-red">🔴 {{ red_count }} низкая эффективность</div>
+  </div>
+  {% endif %}
+
+  <div class="sort-row">
+    <a href="{{ url_for('admin.top_managers', sort='leads') }}" class="filter-pill">📋 По лидам</a>
+    <a href="{{ url_for('admin.top_managers', sort='conversion') }}" class="filter-pill">📈 По конверсии</a>
+    <a href="{{ url_for('admin.top_managers', sort='withdrawals') }}" class="filter-pill">💰 По выводам</a>
+    {% if is_admin %}
+      <a href="{{ url_for('admin.top_managers', sort='balance') }}" class="filter-pill">💎 По балансу</a>
+      <a href="{{ url_for('admin.top_managers', sort='liquidity') }}" class="filter-pill">⚡ По ликвидности</a>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header">📊 Рейтинг {% if is_admin %}с оценкой эффективности{% endif %}</div>
+    <div class="card-body" style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Менеджер</th><th>Лиды</th><th>Конверсия</th><th>Выводов</th>
+            {% if is_admin %}<th>Баланс</th><th>Ликвидность</th><th>Рекомендация</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in stats_list %}
+            <tr>
+              <td>{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}</td>
+              <td>
+                <strong>{{ item.manager.name }}</strong>
+                {% if is_admin %}<br><span class="muted-small">{{ item.manager.login }}</span>{% endif %}
+              </td>
+              <td>{{ item.stats.total_leads }} <span class="muted-small">({{ item.stats.converted_leads }} конв.)</span></td>
+              <td><strong class="{% if item.conversion_rate >= 50 %}txt-green{% elif item.conversion_rate >= 30 %}txt-yellow{% else %}txt-red{% endif %}">{{ item.conversion_rate }}%</strong></td>
+              <td>{{ "%.0f"|format(item.stats.total_withdrawals) }}G</td>
+              {% if is_admin %}
+                <td>{{ "%.0f"|format(item.stats.balance) }}G</td>
+                <td>
+                  <div class="liquidity-bar-wrap"><div class="liquidity-bar" style="width:{{ item.liquidity_score }}%; background:{% if item.liquidity_score >= 75 %}#3ecf8e{% elif item.liquidity_score >= 50 %}#e9b949{% elif item.liquidity_score >= 25 %}#ff9f43{% else %}#e56b6b{% endif %};"></div></div>
+                  <span style="font-size:12px;">{{ item.liquidity_score }}%</span>
+                </td>
+                <td style="font-size:12px; max-width:220px;">{{ item.recommendation }}</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if is_admin %}
+  <div class="mini-tops-grid">
+    <div class="card">
+      <div class="card-header">📋 Топ по лидам</div>
+      <div class="card-body"><ol>{% for item in top_by_leads %}<li>{{ item.manager.name }} — {{ item.value }}</li>{% endfor %}</ol></div>
+    </div>
+    <div class="card">
+      <div class="card-header">📈 Топ по конверсии</div>
+      <div class="card-body"><ol>{% for item in top_by_conversion %}<li>{{ item.manager.name }} — {{ "%.1f"|format(item.value) }}%</li>{% endfor %}</ol></div>
+    </div>
+    <div class="card">
+      <div class="card-header">💰 Топ по выводам</div>
+      <div class="card-body"><ol>{% for item in top_by_withdrawals %}<li>{{ item.manager.name }} — {{ "%.0f"|format(item.value) }}G</li>{% endfor %}</ol></div>
+    </div>
+    <div class="card">
+      <div class="card-header">⚡ Топ по ликвидности</div>
+      <div class="card-body"><ol>{% for item in top_by_liquidity %}<li>{{ item.manager.name }} — {{ item.value }}%</li>{% endfor %}</ol></div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if is_admin %}
+  <div style="margin-top:20px;">
+    <a href="{{ url_for('admin.panel') }}" class="btn-primary btn-auto">← Вернуться в админ-панель</a>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.liquidity-summary { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.liquidity-chip { padding:8px 14px; border-radius:20px; font-size:13px; font-weight:600; }
+.chip-green { background:rgba(62,207,142,0.15); color:#3ecf8e; }
+.chip-yellow { background:rgba(233,185,73,0.15); color:#e9b949; }
+.chip-orange { background:rgba(255,159,67,0.15); color:#ff9f43; }
+.chip-red { background:rgba(229,107,107,0.15); color:#e56b6b; }
+
+.sort-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.filter-pill {
+  padding:7px 15px; border-radius:20px; background-color:#1b1f29;
+  border:1px solid #262b36; color:#8a90a2; text-decoration:none; font-size:13px;
+}
+.filter-pill:hover { border-color:#6c8cff; color:#e8e9ee; }
+
+.liquidity-bar-wrap { width:80px; height:8px; background:#0f1115; border-radius:4px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:6px; }
+.liquidity-bar { height:100%; border-radius:4px; }
+
+.mini-tops-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px; margin-top:20px; }
+.mini-tops-grid ol { padding-left:18px; margin:0; }
+.mini-tops-grid li { font-size:13px; margin-bottom:8px; }
+
+.muted-small { color:#8a90a2; font-size:11px; }
+.txt-green { color:#3ecf8e; }
+.txt-yellow { color:#e9b949; }
+.txt-red { color:#e56b6b; }
+
+.btn-auto { width:auto !important; padding:10px 24px !important; }
+table { width:100%; }
+th, td { padding:10px; font-size:13px; }
+</style>
+{% endblock %}

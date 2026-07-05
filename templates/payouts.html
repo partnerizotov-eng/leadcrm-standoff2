@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Выплаты{% endblock %}
+
+{% block content %}
+<div class="payouts-page">
+  <h1>📜 Выплаты</h1>
+  <p class="payouts-intro">Все подтверждённые выплаты по команде — открыто для всех менеджеров, чтобы каждый мог убедиться в честности выплат.</p>
+
+  {% if not payouts %}
+    <div class="empty-state">Пока нет подтверждённых выплат</div>
+  {% else %}
+    <div class="wd-list">
+      {% for p in payouts %}
+        <div class="wd-card payout-card">
+          <div class="wd-card-top">
+            <div class="wd-title">
+              <span class="wd-id">#{{ p.id }}</span>
+              <span class="wd-manager">{{ p.manager_name }}</span>
+              <span class="wd-amount">{{ "%.2f"|format(p.requested_amount) }}G</span>
+            </div>
+            <span class="status-badge status-completed">✅ Выплачено</span>
+          </div>
+          <div class="wd-meta">
+            <span class="wd-date">Завершено: {{ p.updated_at }}</span>
+          </div>
+          <div class="screenshots-row">
+            {% if p.payout_screenshot %}
+              <a href="{{ url_for('uploads.serve', filename=p.payout_screenshot) }}" target="_blank" class="screenshot-thumb">
+                <img src="{{ url_for('uploads.serve', filename=p.payout_screenshot) }}" alt="Скрин менеджера">
+                <span>От менеджера</span>
+              </a>
+            {% endif %}
+            {% if p.payout_admin_screenshot %}
+              <a href="{{ url_for('uploads.serve', filename=p.payout_admin_screenshot) }}" target="_blank" class="screenshot-thumb">
+                <img src="{{ url_for('uploads.serve', filename=p.payout_admin_screenshot) }}" alt="Доказательство админа">
+                <span>Доказательство от админа</span>
+              </a>
+            {% endif %}
+          </div>
+          {% if p.payout_admin_comment %}
+            <p style="font-size:13px; color:#8a90a2; margin-top:8px;">💬 {{ p.payout_admin_comment }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.payouts-intro {
+  color: #8a90a2; font-size: 14px; margin-bottom: 24px; line-height: 1.5;
+}
+.empty-state { text-align: center; padding: 50px 20px; color: #8a90a2; background: #171a21; border-radius: 10px; }
+
+.wd-list { display: flex; flex-direction: column; gap: 14px; }
+.wd-card {
+  background-color: #171a21; border: 1px solid #262b36; border-radius: 12px;
+  padding: 16px; transition: border-color 0.2s;
+}
+.wd-card:hover { border-color: #33394a; }
+.payout-card { border-color: rgba(62,207,142,0.25); }
+
+.wd-card-top {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 10px;
+}
+.wd-title { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.wd-id { color: #8a90a2; font-size: 13px; }
+.wd-manager { font-weight: 600; }
+.wd-amount { color: #3ecf8e; font-weight: 700; font-size: 16px; }
+
+.status-badge {
+  padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.status-completed { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+
+.wd-meta { display: flex; gap: 18px; flex-wrap: wrap; color: #8a90a2; font-size: 12px; margin-bottom: 10px; }
+.wd-date { margin-left: auto; }
+
+.screenshots-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.screenshot-thumb { display: flex; flex-direction: column; gap: 6px; text-decoration: none; width: 140px; }
+.screenshot-thumb img {
+  width: 140px; height: 100px; object-fit: cover; border-radius: 8px;
+  border: 1px solid #262b36; transition: border-color 0.2s;
+}
+.screenshot-thumb:hover img { border-color: #6c8cff; }
+.screenshot-thumb span { font-size: 11px; color: #8a90a2; text-align: center; }
+
+@media (max-width: 768px) {
+  .wd-date { margin-left: 0; }
+}
+</style>
+{% endblock %}

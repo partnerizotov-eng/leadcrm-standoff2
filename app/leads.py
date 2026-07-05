@@ -279,6 +279,8 @@ def log_participation(lead_id):
     return redirect(url_for("leads.index"))
 
 
+    return redirect(profile_url)
+
 @bp.route("/leads/<int:lead_id>/adjust-balance", methods=["POST"])
 @admin_required
 def adjust_balance(lead_id):
@@ -343,3 +345,58 @@ def view(lead_id):
                           statuses=STATUSES, 
                           status_labels=STATUS_LABELS,
                           scripts=[dict(s) for s in scripts])
+
+
+# ==================== VK ИНТЕГРАЦИЯ ДЛЯ ЛИДОВ ====================
+
+from .vk_integration import get_direct_message_url, get_vk_profile_url
+from flask import redirect, flash, url_for
+from .security import login_required
+from .db import query_one
+
+
+@bp.route('/lead/<int:lead_id>/vk-chat')
+@login_required
+def lead_vk_chat(lead_id):
+    """Открыть прямой чат с лидом в VK"""
+    lead = query_one("SELECT * FROM leads WHERE id = ?", (lead_id,))
+    
+    if not lead:
+        flash('❌ Лид не найден', 'error')
+        return redirect(url_for('leads.index'))
+    
+    if not lead['vk_id']:
+        flash('❌ VK ID лида не указан', 'error')
+        return redirect(url_for('leads.index'))
+    
+    chat_url = get_direct_message_url(lead['vk_id'])
+    
+    if not chat_url:
+        flash('❌ Не удалось открыть чат', 'error')
+        return redirect(url_for('leads.index'))
+    
+    return redirect(chat_url)
+
+
+@bp.route('/lead/<int:lead_id>/vk-profile')
+@login_required
+def lead_vk_profile(lead_id):
+    """Открыть профиль лида в VK"""
+    lead = query_one("SELECT * FROM leads WHERE id = ?", (lead_id,))
+    
+    if not lead:
+        flash('❌ Лид не найден', 'error')
+        return redirect(url_for('leads.index'))
+    
+    if not lead['vk_id']:
+        flash('❌ VK ID лида не указан', 'error')
+        return redirect(url_for('leads.index'))
+    
+    profile_url = get_vk_profile_url(lead['vk_id'])
+    
+    if not profile_url:
+        flash('❌ Не удалось открыть профиль', 'error')
+        return redirect(url_for('leads.index'))
+    
+    return redirect(profile_url)
+

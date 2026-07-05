@@ -11,3 +11,7 @@ data/uploads/
 .DS_Store
 *.sqlite3
 *.db
+backup_*.zip
+backup_*/
+__pycache__/
+*.pyc

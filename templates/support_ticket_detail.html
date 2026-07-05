@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Тикет #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="ticket-detail">
+  <a href="{{ url_for('support_tickets.index') }}" class="back-link">← Все тикеты</a>
+
+  <div class="ticket-header">
+    <h1>🎫 #{{ ticket.id }} — {{ ticket.subject }}</h1>
+    <span class="status-pill {% if ticket.status == 'open' %}status-open{% else %}status-closed{% endif %}">
+      {% if ticket.status == 'open' %}🟦 Открыт{% else %}✅ Закрыт{% endif %}
+    </span>
+  </div>
+  {% if is_admin %}<p class="ticket-from">От: {{ ticket.manager_name }}</p>{% endif %}
+
+  <div class="chat-box" id="chat-box">
+    {% for m in messages %}
+      <div class="chat-message {% if m.sender_role == 'admin' %}chat-admin{% else %}chat-manager{% endif %}">
+        <div class="chat-meta">
+          <strong>{% if m.sender_role == 'admin' %}👨‍💼 {{ m.sender_name }} (Админ){% else %}👤 {{ m.sender_name }}{% endif %}</strong>
+          <span>{{ m.created_at }}</span>
+        </div>
+        {% if m.message %}<p>{{ m.message }}</p>{% endif %}
+        {% if m.attachment_path %}
+          {% if m.attachment_type == 'image' %}
+            <a href="{{ url_for('uploads.serve', filename=m.attachment_path) }}" target="_blank">
+              <img src="{{ url_for('uploads.serve', filename=m.attachment_path) }}" class="chat-attachment-img">
+            </a>
+          {% elif m.attachment_type == 'video' %}
+            <video controls class="chat-attachment-video">
+              <source src="{{ url_for('uploads.serve', filename=m.attachment_path) }}">
+            </video>
+          {% elif m.attachment_type == 'audio' %}
+            <audio controls class="chat-attachment-audio">
+              <source src="{{ url_for('uploads.serve', filename=m.attachment_path) }}">
+            </audio>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if ticket.status != 'closed' %}
+    <form method="POST" action="{{ url_for('support_tickets.send', ticket_id=ticket.id) }}" enctype="multipart/form-data" class="chat-input-form" id="chat-form">
+      {{ csrf_field() }}
+      <input type="hidden" name="attachment_kind" id="attachment-kind" value="">
+      <div id="attachment-preview" class="attachment-preview" style="display:none;">
+        <span id="attachment-name"></span>
+        <button type="button" id="clear-attachment">✕</button>
+      </div>
+      <div class="chat-input-row">
+        <textarea name="message" placeholder="Напиши сообщение..." rows="1" id="chat-text"></textarea>
+        <input type="file" name="attachment" id="attachment-input" accept="image/*,video/*,audio/*" style="display:none;">
+        <button type="button" id="attach-btn" title="Прикрепить фото/видео">📎</button>
+        <button type="button" id="record-btn" title="Записать аудио">🎤</button>
+        <button type="submit" class="btn-primary btn-auto">Отправить</button>
+      </div>
+      <div id="recording-indicator" style="display:none;">🔴 Идёт запись... <button type="button" id="stop-record-btn">Остановить</button></div>
+      <div id="mic-error" class="mic-error" style="display:none;"></div>
+    </form>
+  {% endif %}
+
+  {% if is_admin and ticket.status != 'closed' %}
+    <form method="POST" action="{{ url_for('support_tickets.close', ticket_id=ticket.id) }}" class="close-ticket-form">
+      {{ csrf_field() }}
+      <button type="submit" class="btn-danger btn-auto" onclick="return confirm('Закрыть тикет?')">🔒 Закрыть тикет</button>
+    </form>
+  {% endif %}
+</div>
+
+<style>
+.back-link { color: #6c8cff; text-decoration: none; font-size: 13px; }
+
+.ticket-header {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; margin-top: 12px;
+}
+.ticket-header h1 { margin: 0; font-size: 20px; }
+.ticket-from { color: #8a90a2; font-size: 13px; margin: 4px 0 0 0; }
+
+.status-pill {
+  padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.status-open { background: rgba(108,140,255,0.15); color: #6c8cff; }
+.status-closed { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+
+.chat-box {
+  margin-top: 16px; display: flex; flex-direction: column; gap: 12px;
+  max-height: 500px; overflow-y: auto; padding-right: 4px;
+}
+.chat-message { padding: 12px 14px; border-radius: 8px; background-color: #171a21; border-left: 3px solid #262b36; }
+.chat-admin { border-left-color: #6c8cff; }
+.chat-manager { border-left-color: #3ecf8e; }
+.chat-meta { display: flex; justify-content: space-between; font-size: 12px; color: #8a90a2; margin-bottom: 6px; }
+.chat-message p { margin: 0 0 8px 0; font-size: 14px; line-height: 1.5; }
+.chat-attachment-img { max-width: 260px; max-height: 260px; border-radius: 8px; display: block; }
+.chat-attachment-video { max-width: 300px; border-radius: 8px; display: block; }
+.chat-attachment-audio { width: 260px; }
+
+.chat-input-form {
+  margin-top: 16px; padding: 12px; background-color: #171a21; border: 1px solid #262b36; border-radius: 10px;
+}
+.chat-input-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.chat-input-row textarea { flex: 1; min-width: 150px; resize: none; min-height: 40px; }
+.chat-input-row button { flex-shrink: 0; }
+#attach-btn, #record-btn {
+  background: #1b1f29; border: 1px solid #262b36; padding: 8px 12px;
+  border-radius: 6px; cursor: pointer; font-size: 16px;
+}
+#record-btn.recording { background: #e56b6b; color: white; border-color: #e56b6b; }
+.btn-auto { width: auto !important; padding: 10px 24px !important; }
+
+.attachment-preview {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #1b1f29; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; color: #8a90a2;
+}
+.attachment-preview button { background: none; border: none; color: #e56b6b; cursor: pointer; font-size: 16px; }
+
+#recording-indicator { margin-top: 8px; color: #e56b6b; font-size: 13px; }
+#recording-indicator button {
+  margin-left: 8px; background: #262b36; border: none; color: #e8e9ee;
+  padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.mic-error {
+  margin-top: 8px; color: #e56b6b; font-size: 12px; background: rgba(229,107,107,0.08);
+  border: 1px solid rgba(229,107,107,0.3); border-radius: 6px; padding: 8px 10px;
+}
+
+.close-ticket-form { margin-top: 16px; }
+</style>
+
+<script>
+(function() {
+  const fileInput = document.getElementById('attachment-input');
+  const attachBtn = document.getElementById('attach-btn');
+  const recordBtn = document.getElementById('record-btn');
+  const stopBtn = document.getElementById('stop-record-btn');
+  const preview = document.getElementById('attachment-preview');
+  const nameSpan = document.getElementById('attachment-name');
+  const clearBtn = document.getElementById('clear-attachment');
+  const recordingIndicator = document.getElementById('recording-indicator');
+  const chatBox = document.getElementById('chat-box');
+  const attachmentKindInput = document.getElementById('attachment-kind');
+  const micError = document.getElementById('mic-error');
+
+  if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+
+  if (attachBtn) {
+    attachBtn.addEventListener('click', () => {
+      attachmentKindInput.value = '';
+      fileInput.click();
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        nameSpan.textContent = '📎 ' + fileInput.files[0].name;
+        preview.style.display = 'flex';
+      }
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      attachmentKindInput.value = '';
+      preview.style.display = 'none';
+    });
+  }
+
+  let mediaRecorder = null;
+  let audioChunks = [];
+
+  // Safari не поддерживает audio/webm — подбираем первый поддерживаемый формат.
+  const CANDIDATE_TYPES = [
+    { mime: 'audio/mp4', ext: 'm4a' },
+    { mime: 'audio/aac', ext: 'aac' },
+    { mime: 'audio/webm;codecs=opus', ext: 'weba' },
+    { mime: 'audio/webm', ext: 'weba' },
+    { mime: 'audio/ogg', ext: 'ogg' },
+  ];
+
+  function pickSupportedType() {
+    if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+      return { mime: '', ext: 'weba' }; // пусть браузер выберет сам
+    }
+    for (const c of CANDIDATE_TYPES) {
+      if (MediaRecorder.isTypeSupported(c.mime)) return c;
+    }
+    return { mime: '', ext: 'weba' };
+  }
+
+  if (recordBtn) {
+    recordBtn.addEventListener('click', async () => {
+      micError.style.display = 'none';
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        micError.textContent = 'Браузер не поддерживает запись аудио (нужен HTTPS или localhost).';
+        micError.style.display = 'block';
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const chosen = pickSupportedType();
+        mediaRecorder = chosen.mime
+          ? new MediaRecorder(stream, { mimeType: chosen.mime })
+          : new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+        mediaRecorder.onstop = () => {
+          const blobType = mediaRecorder.mimeType || chosen.mime || 'audio/webm';
+          const blob = new Blob(audioChunks, { type: blobType });
+          const file = new File([blob], 'voice_message.' + chosen.ext, { type: blobType });
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          fileInput.files = dt.files;
+          attachmentKindInput.value = 'audio';
+
+          nameSpan.textContent = '🎤 Голосовое сообщение';
+          preview.style.display = 'flex';
+          recordingIndicator.style.display = 'none';
+          recordBtn.classList.remove('recording');
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        mediaRecorder.start();
+        recordingIndicator.style.display = 'block';
+        recordBtn.classList.add('recording');
+      } catch (err) {
+        micError.textContent = 'Не удалось получить доступ к микрофону: ' + err.message;
+        micError.style.display = 'block';
+      }
+    });
+  }
+
+  if (stopBtn) {
+    stopBtn.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

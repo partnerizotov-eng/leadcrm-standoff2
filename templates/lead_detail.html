@@ -1,131 +1,48 @@
 {% extends "base.html" %}
 
-{% block title %}Лид: {{ lead.name }}{% endblock %}
+{% block title %}Топ менеджеров{% endblock %}
 
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-  <h1>👤 {{ lead.name or lead.vk_id }}</h1>
-  <a href="{{ url_for('leads.index') }}" class="btn btn-soft btn-sm">← Назад</a>
-</div>
+<div class="top-managers">
+  <h1>🏆 Топ менеджеров</h1>
 
-<div class="grid-2">
-  <!-- Информация о лиде -->
   <div class="card">
-    <h2>📋 Информация</h2>
-    <table>
-      <tr><td>VK</td><td><a href="{{ lead.vk_url }}" target="_blank">{{ lead.vk_id }}</a></td></tr>
-      <tr><td>Имя</td><td>{{ lead.name or '—' }}</td></tr>
-      <tr><td>Статус</td><td><span class="badge badge-{{ lead.status }}">{{ status_labels[lead.status] }}</span></td></tr>
-      <tr><td>Баланс</td><td><span class="balance-pill">{{ "%.2f"|format(lead.balance) }}G</span></td></tr>
-      <tr><td>Группа</td><td>{{ lead.source_group or '—' }}</td></tr>
-      <tr><td>Game ID</td><td>
-        {% if lead.game_id %}
-          <code>{{ lead.game_id }}</code>
-          {% if lead.game_verified %}
-          <span class="badge badge-joined_channel">✅ Верифицирован</span>
-          {% endif %}
-        {% else %}
-          <span class="muted">Не привязан</span>
-        {% endif %}
-      </td></tr>
-      <tr><td>Участий</td><td>{{ lead.participation_count }}</td></tr>
-    </table>
+    <div class="card-header">📊 Сортировать по:</div>
+    <div class="card-body" style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <a href="{{ url_for('admin.top_managers', sort='leads') }}" class="btn-primary">📋 По лидам</a>
+      <a href="{{ url_for('admin.top_managers', sort='conversion') }}" class="btn-primary">📈 По конверсии</a>
+      <a href="{{ url_for('admin.top_managers', sort='withdrawals') }}" class="btn-primary">💰 По выводам</a>
+      <a href="{{ url_for('admin.top_managers', sort='balance') }}" class="btn-primary">💎 По балансу</a>
+    </div>
   </div>
 
-  <!-- Действия -->
   <div class="card">
-    <h2>⚡ Действия</h2>
-    
-    <!-- Кнопка вывода -->
-    {% if lead.game_id and lead.balance >= 10 %}
-    <div style="background:rgba(255,215,0,0.05);border:1px solid var(--gold);border-radius:8px;padding:12px;margin-bottom:12px;">
-      <h3 style="color:var(--gold);margin-top:0;">🎮 Вывод в Standoff 2</h3>
-      
-      <form method="post" action="{{ url_for('game.withdraw_gold', lead_id=lead.id) }}" id="withdraw-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-          <label class="field" style="flex:1;min-width:150px;">
-            <span>Сумма вывода (G)</span>
-            <input type="number" 
-                   name="amount" 
-                   step="0.01" 
-                   min="10" 
-                   max="{{ lead.balance }}" 
-                   placeholder="10" 
-                   required
-                   oninput="calculatePrice(this.value)">
-          </label>
-          <label class="field" style="flex:1;min-width:150px;">
-            <span>Цена товара (G)</span>
-            <input type="text" 
-                   id="price-display" 
-                   readonly 
-                   style="color:var(--gold);font-weight:bold;background:rgba(255,215,0,0.1);">
-          </label>
-          <button class="btn btn-gold" type="submit">🎮 Вывести</button>
-        </div>
-      </form>
-      
-      <div style="font-size:12px;color:var(--muted);margin-top:8px;">
-        💡 <strong>Подсказка:</strong> Цена товара = Сумма вывода × 1.2 (комиссия 20%)
-        <br>📌 Минимальный вывод: <strong>10G</strong>
-      </div>
-    </div>
-    {% elif lead.game_id %}
-    <div class="tip-warning" style="margin-bottom:12px;">
-      ⚠️ Для вывода нужно минимум 10G. Доступно: {{ "%.2f"|format(lead.balance) }}G
-    </div>
-    {% endif %}
-    
-    <!-- Привязка ID -->
-    {% if not lead.game_id %}
-    <form method="post" action="{{ url_for('game.verify_player', lead_id=lead.id) }}" style="margin-bottom:12px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div style="display:flex;gap:8px;">
-        <input type="text" name="game_id" placeholder="Game ID Standoff 2" required style="flex:1;">
-        <button class="btn btn-primary" type="submit">🔗 Привязать</button>
-      </div>
-    </form>
-    {% endif %}
-    
-    <!-- Смена статуса -->
-    <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}" style="margin-bottom:12px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div style="display:flex;gap:8px;">
-        <select name="status" style="flex:1;">
-          {% for s in statuses %}
-          <option value="{{ s }}" {{ 'selected' if lead.status == s }}>{{ status_labels[s] }}</option>
+    <div class="card-header">📋 Полная статистика</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Менеджер</th><th>Лиды</th><th>Конверсия</th><th>Выводов</th><th>Баланс</th></tr>
+        </thead>
+        <tbody>
+          {% for item in stats_list %}
+            <tr>
+              <td>
+                {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+              </td>
+              <td><strong>{{ item.manager.name }}</strong></td>
+              <td>{{ item.stats.total_leads }} <span style="color:#8a90a2; font-size:12px;">({{ item.stats.converted_leads }} конверт.)</span></td>
+              <td><strong style="{% if item.conversion_rate >= 50 %}color:#3ecf8e{% elif item.conversion_rate >= 30 %}color:#e9b949{% else %}color:#e56b6b{% endif %};">{{ item.conversion_rate }}%</strong></td>
+              <td>{{ "%.0f"|format(item.stats.total_withdrawals) }}G</td>
+              <td>{{ "%.0f"|format(item.stats.balance) }}G</td>
+            </tr>
           {% endfor %}
-        </select>
-        <button class="btn btn-soft" type="submit">Обновить</button>
-      </div>
-    </form>
-    
-    <!-- Отправка заявки -->
-    <form method="post" action="{{ url_for('submissions.create', lead_id=lead.id) }}" enctype="multipart/form-data" style="border-top:1px solid var(--border);padding-top:12px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="tip-warning" style="margin-bottom:6px;padding:6px 10px;font-size:12px;">
-        ⚠️ Прикрепите скриншот с ID в комментариях.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <select name="round_slot">
-          <option value="12:00">12:00</option>
-          <option value="18:00">18:00</option>
-          <option value="00:00">00:00</option>
-        </select>
-        <input type="file" name="screenshot" accept="image/*" required style="flex:1;">
-        <button class="btn btn-primary btn-sm" type="submit">📸 Отправить</button>
-      </div>
-    </form>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <a href="{{ url_for('admin.panel') }}" class="btn-primary">← Вернуться в админ-панель</a>
   </div>
 </div>
-
-<script>
-function calculatePrice(amount) {
-    const val = parseFloat(amount) || 0;
-    const price = val * 1.2;
-    document.getElementById('price-display').value = price.toFixed(2) + ' G';
-}
-</script>
 {% endblock %}

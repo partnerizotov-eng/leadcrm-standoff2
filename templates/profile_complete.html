@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Заполните профиль{% endblock %}
+
+{% block content %}
+<div class="onboarding-page">
+  <div class="card onboarding-card">
+    <div class="card-header">👋 Добро пожаловать! Заполните профиль</div>
+    <div class="card-body">
+      <p class="onboarding-hint">Это нужно один раз — чтобы администратор знал, кто с ним работает.</p>
+
+      <form method="POST" action="{{ url_for('profile.complete') }}" class="onboarding-form">
+        {{ csrf_field() }}
+
+        <label>ФИО <span class="req">*</span></label>
+        <input type="text" name="full_name" placeholder="Иванов Иван Иванович" required value="{{ manager.name if manager.profile_completed else '' }}">
+
+        <label>Email <span class="req">*</span></label>
+        <input type="email" name="email" placeholder="name@mail.ru" required value="{{ manager.email or '' }}">
+
+        <label>Ссылка на VK <span class="req">*</span></label>
+        <input type="text" name="vk_url" placeholder="vk.com/my_profile" required value="{{ manager.vk_url or '' }}">
+
+        <label>ID в Standoff 2 <span class="req">*</span></label>
+        <input type="text" name="game_id" placeholder="Например: 10293847" required value="{{ manager.game_id or '' }}">
+
+        <label class="consent-row">
+          <input type="checkbox" name="consent" value="1" required>
+          <span>Я даю согласие на обработку моих персональных данных (ФИО, email, ссылка VK, игровой ID) в целях учёта сотрудников проекта, в соответствии с 152-ФЗ.</span>
+        </label>
+
+        <button type="submit" class="btn-primary btn-auto">Продолжить</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+.onboarding-page { max-width: 480px; margin: 40px auto; }
+.onboarding-card { border-left: 3px solid #6c8cff; }
+.onboarding-hint { color: #8a90a2; font-size: 13px; margin-bottom: 16px; }
+.onboarding-form label { display: block; margin-top: 14px; margin-bottom: 6px; font-size: 13px; color: #c9ccd6; }
+.onboarding-form label:first-child { margin-top: 0; }
+.onboarding-form input { width: 100%; }
+.req { color: #e56b6b; }
+.consent-row { display: flex; gap: 10px; align-items: flex-start; margin-top: 18px; font-size: 12px; color: #8a90a2; line-height: 1.5; }
+.consent-row input { width: auto; margin-top: 3px; }
+.btn-auto { width: 100% !important; padding: 12px !important; margin-top: 20px !important; }
+</style>
+{% endblock %}

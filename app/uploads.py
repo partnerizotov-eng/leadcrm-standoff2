@@ -58,3 +58,46 @@ def serve(filename):
     if not path.is_file():
         abort(404)
     return send_from_directory(_upload_dir(), filename)
+
+
+ATTACHMENT_EXTENSIONS = {
+    "png", "jpg", "jpeg", "webp", "gif",                    # изображения
+    "mp4", "mov", "webm",                                   # видео
+    "mp3", "wav", "m4a", "ogg", "weba", "aac", "mp4a",       # аудио
+}
+ATTACHMENT_MAX_BYTES = 30 * 1024 * 1024  # 30 MB — фото/видео/аудиосообщения в чате
+
+
+def save_attachment(file_storage, prefix, forced_kind=None):
+    """Сохраняет вложение чата (фото/видео/аудио). Возвращает (filename, kind)
+    или (None, None), где kind — 'image' | 'video' | 'audio'.
+
+    ``forced_kind`` позволяет клиенту явно сказать "это аудио" (нужно для
+    голосовых записей — некоторые контейнеры типа .mp4/.webm иначе были бы
+    ошибочно распознаны как видео)."""
+    if not file_storage or not file_storage.filename:
+        return None, None
+
+    original = secure_filename(file_storage.filename)
+    ext = original.rsplit(".", 1)[-1].lower() if "." in original else ""
+    if ext not in ATTACHMENT_EXTENSIONS:
+        return None, None
+
+    file_storage.seek(0, 2)
+    size = file_storage.tell()
+    file_storage.seek(0)
+    if size == 0 or size > ATTACHMENT_MAX_BYTES:
+        return None, None
+
+    if forced_kind in {"image", "video", "audio"}:
+        kind = forced_kind
+    elif ext in {"png", "jpg", "jpeg", "webp", "gif"}:
+        kind = "image"
+    elif ext in {"mp4", "mov", "webm"}:
+        kind = "video"
+    else:
+        kind = "audio"
+
+    filename = f"{prefix}_{secrets.token_hex(12)}.{ext}"
+    file_storage.save(_upload_dir() / filename)
+    return filename, kind
