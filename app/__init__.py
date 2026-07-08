@@ -25,6 +25,26 @@ def create_app(config_object=Config):
     app.jinja_env.globals["csrf_token"] = csrf_token
     app.jinja_env.globals["csrf_field"] = csrf_field
 
+    def unread_chat_count():
+        manager_id = session.get("manager_id")
+        if not manager_id:
+            return 0
+        from .db import query_one as _qo
+        state = _qo("SELECT last_read_id FROM chat_read_state WHERE manager_id=?", (manager_id,))
+        last_read_id = state["last_read_id"] if state else 0
+        row = _qo("SELECT COUNT(*) c FROM chat_messages WHERE id > ? AND manager_id != ?", (last_read_id, manager_id))
+        return row["c"] if row else 0
+    app.jinja_env.globals["unread_chat_count"] = unread_chat_count
+
+    def unread_notifications_count():
+        manager_id = session.get("manager_id")
+        if not manager_id:
+            return 0
+        from .db import query_one as _qo
+        row = _qo("SELECT COUNT(*) c FROM notifications WHERE manager_id=? AND is_read=0", (manager_id,))
+        return row["c"] if row else 0
+    app.jinja_env.globals["unread_notifications_count"] = unread_notifications_count
+
     @app.before_request
     def force_profile_completion():
         if not request.endpoint or request.endpoint == "static":
@@ -73,11 +93,15 @@ def create_app(config_object=Config):
     from .payouts import bp as payouts_bp
     from .support_tickets import bp as support_tickets_bp
     from .profile import bp as profile_bp
+    from .contest import bp as contest_bp
+    from .chat import bp as chat_bp
+    from .db_export import bp as db_export_bp
 
     for bp in (auth_bp, leads_bp, scripts_bp, dashboard_bp, managers_bp,
                submissions_bp, withdrawals_bp, notifications_bp, uploads_bp,
                journal_bp, game_bp, achievements_bp, referrals_bp, ai_bp,
-               admin_bp, payouts_bp, support_tickets_bp, profile_bp):
+               admin_bp, payouts_bp, support_tickets_bp, profile_bp,
+               contest_bp, chat_bp, db_export_bp):
         app.register_blueprint(bp)
     
     @app.context_processor

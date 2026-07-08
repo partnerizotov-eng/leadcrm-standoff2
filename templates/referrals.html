@@ -1,101 +1,145 @@
 {% extends "base.html" %}
-
 {% block title %}Рефералы{% endblock %}
-
 {% block content %}
-<h1>🤝 Реферальная система</h1>
-
-<div class="tip">
-  💡 Приглашайте новых лидов и получайте <strong>{{ reward_amount }}G</strong> за каждого
-  активированного реферала.
+<div class="ref-header">
+  <h1 style="margin:0;">🤝 Рефералы</h1>
+  <p class="muted" style="margin:4px 0 0;">
+    Пригласи менеджера — вставь его ссылку VK. Как только он одобрит {{ required_submissions }} заявки и сделает вывод —
+    ты получишь {{ activation_bonus }}G и {{ override_pct }}% от каждого его дохода — бессрочно.
+  </p>
 </div>
 
-<!-- Статистика -->
-<div class="grid-4" style="margin-bottom:16px;">
-  <div class="kpi">
-    <span class="kpi-label">Всего рефералов</span>
-    <span class="kpi-value">{{ stats.total or 0 }}</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-label">Вознаграждено</span>
-    <span class="kpi-value" style="color:var(--green);">{{ stats.rewarded or 0 }}</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-label">Ожидают</span>
-    <span class="kpi-value" style="color:var(--amber);">{{ stats.pending or 0 }}</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-label">Заработано</span>
-    <span class="kpi-value" style="color:var(--gold);">{{ "%.2f"|format(stats.total_rewards or 0) }}G</span>
+<div class="ref-claim-card">
+  <div class="ref-claim-icon">🔗</div>
+  <div class="ref-claim-body">
+    <div class="ref-claim-title">Укажи, кого ты пригласил</div>
+    <form method="post" action="{{ url_for('referrals.claim') }}" class="ref-claim-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="text" name="vk_url" placeholder="vk.com/имя_профиля" required>
+      <button class="btn btn-primary" type="submit">Привязать реферала</button>
+    </form>
+    <div class="ref-claim-hint">
+      ⚠️ Ссылка привяжется <b>только</b> если в системе уже есть менеджер с точно такой же ссылкой VK в своём профиле.
+      Если его ещё нет — заявка сохранится и сработает автоматически, как только он зарегистрируется и укажет этот VK.
+    </div>
   </div>
 </div>
 
-<!-- Реферальная ссылка -->
-{% if ref_link %}
-<div class="card" style="margin-bottom:16px;">
-  <h2 style="font-size:14px;">🔗 Ваша реферальная ссылка</h2>
-  <input type="text" class="mono" value="{{ ref_link }}" readonly onclick="this.select()"
-         style="width:100%;padding:8px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);">
-  <p class="muted" style="font-size:12px;margin-top:6px;">Нажмите на ссылку, чтобы выделить и скопировать.</p>
+<div class="ref-stats-row">
+  <div class="ref-stat-card">
+    <div class="ref-stat-value">{{ stats.total }}</div>
+    <div class="ref-stat-label">Всего рефералов</div>
+  </div>
+  <div class="ref-stat-card ref-stat-green">
+    <div class="ref-stat-value">{{ stats.active_count or 0 }}</div>
+    <div class="ref-stat-label">Активных</div>
+  </div>
+  <div class="ref-stat-card ref-stat-gold">
+    <div class="ref-stat-value">{{ "%.0f"|format(stats.total_earned or 0) }}G</div>
+    <div class="ref-stat-label">Заработано с рефералов</div>
+  </div>
+</div>
+
+{% if pending_claims %}
+<div class="ref-claims-block">
+  <div class="ref-claims-title">⏳ Ожидают подтверждения ({{ pending_claims|length }})</div>
+  <p class="muted" style="font-size:12.5px; margin:4px 0 12px;">
+    Эти ссылки ещё не совпали ни с одним зарегистрированным менеджером — сработает автоматически при регистрации.
+  </p>
+  {% for c in pending_claims %}
+    <div class="ref-claim-pending-row">
+      <span>🔗 {{ c.vk_url }}</span>
+      <span class="muted" style="font-size:11.5px;">{{ c.created_at }}</span>
+    </div>
+  {% endfor %}
 </div>
 {% endif %}
 
-<!-- Добавить реферала вручную -->
-<div class="card" style="margin-bottom:16px;">
-  <h2 style="font-size:14px;">➕ Добавить реферала</h2>
-  <form method="post" action="{{ url_for('referrals.add_referral') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="grid-2">
-      <label class="field">
-        <span>Ссылка VK</span>
-        <input type="text" name="vk_url" placeholder="https://vk.com/id..." required>
-      </label>
-      <label class="field">
-        <span>Имя (необязательно)</span>
-        <input type="text" name="name" placeholder="Имя лида">
-      </label>
-    </div>
-    <button class="btn btn-primary btn-sm" type="submit">Добавить реферала</button>
-  </form>
-</div>
-
-<!-- Список рефералов -->
-<div class="card">
-  <h2 style="font-size:14px;">📋 Мои рефералы</h2>
+<div class="ref-list">
   {% if referrals %}
-  <table>
-    <thead>
-      <tr>
-        <th>Лид</th>
-        <th>Статус лида</th>
-        <th>Награда</th>
-        <th>Статус</th>
-        <th>Дата</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in referrals %}
-      <tr>
-        <td>
-          {% if r.vk_url %}<a href="{{ r.vk_url }}" target="_blank" rel="noopener">{{ r.lead_name or r.vk_id }}</a>
-          {% else %}{{ r.lead_name or r.vk_id }}{% endif %}
-        </td>
-        <td><span class="badge badge-{{ r.lead_status }}">{{ r.lead_status }}</span></td>
-        <td>{{ "%.2f"|format(r.reward_amount or 0) }}G</td>
-        <td>
-          {% if r.ref_status == 'rewarded' %}
-            <span class="badge badge-approved">✅ Начислено</span>
+    {% for r in referrals %}
+      {% set pct = ((r.submissions_approved / required_submissions) * 100) if r.submissions_approved < required_submissions else 100 %}
+      <div class="ref-card {{ 'ref-card-active' if r.status == 'active' }}">
+        <div class="ref-card-top">
+          <div class="ref-card-name">{{ r.referred_name }}</div>
+          {% if r.status == 'active' %}
+            <span class="ref-badge ref-badge-active">✅ Активен</span>
           {% else %}
-            <span class="badge badge-pending">⏳ Ожидает</span>
+            <span class="ref-badge ref-badge-pending">⏳ Выполняет условия</span>
           {% endif %}
-        </td>
-        <td style="font-size:12px;white-space:nowrap;">{{ (r.created_at or '')[:16] }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </div>
+
+        {% if r.status != 'active' %}
+        <div class="ref-progress-block">
+          <div class="ref-progress-row">
+            <span>📋 Заявки одобрены</span>
+            <span>{{ r.submissions_approved }} / {{ required_submissions }}</span>
+          </div>
+          <div class="ref-progress-bar"><div class="ref-progress-fill" style="width:{{ pct }}%;"></div></div>
+
+          <div class="ref-progress-row" style="margin-top:10px;">
+            <span>💰 Вывод голды сделан</span>
+            <span>{{ '✅ Да' if r.withdrawal_done else '— Нет' }}</span>
+          </div>
+          <div class="ref-progress-bar"><div class="ref-progress-fill {{ 'ref-progress-full' if r.withdrawal_done }}" style="width:{{ 100 if r.withdrawal_done else 0 }}%;"></div></div>
+        </div>
+        {% else %}
+        <div class="ref-earned-row">
+          <span class="muted">Заработано с этого реферала:</span>
+          <span class="ref-earned-value">{{ "%.2f"|format(r.total_override_earned) }}G</span>
+        </div>
+        {% endif %}
+      </div>
+    {% endfor %}
   {% else %}
-  <p class="muted" style="text-align:center;padding:20px;">Пока нет рефералов. Пригласите первого!</p>
+    <p class="muted" style="text-align:center; padding:30px 0;">Пока нет привязанных рефералов — начни с формы выше.</p>
   {% endif %}
 </div>
+
+<style>
+.ref-header { margin-bottom: 18px; }
+
+.ref-claim-card {
+  display: flex; gap: 16px; align-items: flex-start;
+  background: linear-gradient(135deg, rgba(108,140,255,0.10), rgba(255,215,0,0.06));
+  border: 1px solid var(--accent); border-radius: 16px; padding: 20px; margin-bottom: 20px;
+}
+.ref-claim-icon { font-size: 28px; }
+.ref-claim-body { flex: 1; }
+.ref-claim-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+.ref-claim-form { display: flex; gap: 10px; flex-wrap: wrap; }
+.ref-claim-form input { flex: 1; min-width: 200px; }
+.ref-claim-hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+.ref-stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.ref-stat-card { flex: 1; min-width: 140px; background: #171a21; border: 1px solid #262b36; border-radius: 14px; padding: 16px; text-align: center; }
+.ref-stat-value { font-size: 26px; font-weight: 800; }
+.ref-stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.ref-stat-green .ref-stat-value { color: var(--green); }
+.ref-stat-gold .ref-stat-value { color: var(--gold); }
+
+.ref-claims-block { background: #171a21; border: 1px dashed var(--amber); border-radius: 14px; padding: 16px 18px; margin-bottom: 20px; }
+.ref-claims-title { font-weight: 700; color: var(--amber); }
+.ref-claim-pending-row { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid #20242e; font-size: 13px; }
+.ref-claim-pending-row:first-of-type { border-top: none; }
+
+.ref-list { display: flex; flex-direction: column; gap: 12px; }
+.ref-card { background: #171a21; border: 1px solid #262b36; border-radius: 14px; padding: 16px 18px; }
+.ref-card-active { border-color: rgba(62,207,142,0.4); background: rgba(62,207,142,0.04); }
+.ref-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.ref-card-name { font-weight: 700; font-size: 15px; }
+
+.ref-badge { padding: 5px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 700; }
+.ref-badge-active { background: rgba(62,207,142,0.15); color: var(--green); }
+.ref-badge-pending { background: rgba(233,185,73,0.15); color: var(--amber); }
+
+.ref-progress-block { display: flex; flex-direction: column; gap: 4px; }
+.ref-progress-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
+.ref-progress-bar { height: 8px; background: #0f1115; border-radius: 4px; overflow: hidden; }
+.ref-progress-fill { height: 100%; background: linear-gradient(90deg, #6C8CFF, #3ECF8E); border-radius: 4px; transition: width 0.4s; }
+.ref-progress-fill.ref-progress-full { background: var(--green); }
+
+.ref-earned-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.ref-earned-value { color: var(--gold); font-weight: 800; font-size: 18px; }
+</style>
 {% endblock %}

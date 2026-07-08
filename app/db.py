@@ -381,6 +381,68 @@ CREATE TABLE IF NOT EXISTS message_scripts (
 );
 CREATE INDEX IF NOT EXISTS idx_message_scripts_category ON message_scripts(category);
 
+CREATE TABLE IF NOT EXISTS contests (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    title         TEXT    NOT NULL,
+    starts_at     TEXT    NOT NULL,
+    ends_at       TEXT    NOT NULL,
+    is_active     INTEGER NOT NULL DEFAULT 1,
+    prizes_paid   INTEGER NOT NULL DEFAULT 0,
+    created_by    INTEGER,
+    created_at    TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (created_by) REFERENCES managers(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS contest_prizes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    contest_id  INTEGER NOT NULL,
+    place_from  INTEGER NOT NULL,
+    place_to    INTEGER NOT NULL,
+    amount      REAL    NOT NULL,
+    FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS contest_winners (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    contest_id  INTEGER NOT NULL,
+    manager_id  INTEGER NOT NULL,
+    place       INTEGER NOT NULL,
+    approved_count INTEGER NOT NULL,
+    amount      REAL    NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE CASCADE,
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id      INTEGER NOT NULL,
+    message         TEXT    DEFAULT '',
+    attachment_path TEXT,
+    attachment_type TEXT,
+    created_at      TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
+
+CREATE TABLE IF NOT EXISTS chat_read_state (
+    manager_id   INTEGER PRIMARY KEY,
+    last_read_id INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS referral_claims (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id          INTEGER NOT NULL,
+    vk_url               TEXT    NOT NULL,
+    vk_id                TEXT    NOT NULL,
+    status               TEXT    NOT NULL DEFAULT 'pending',
+    matched_referral_id  INTEGER,
+    created_at           TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (referrer_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_referral_claims_vk ON referral_claims(vk_id);
+
 CREATE TABLE IF NOT EXISTS script_usage_logs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     script_id   INTEGER NOT NULL,
@@ -481,6 +543,11 @@ def _migrate(conn):
         ("managers", "game_id", "ALTER TABLE managers ADD COLUMN game_id TEXT"),
         ("managers", "profile_completed", "ALTER TABLE managers ADD COLUMN profile_completed INTEGER NOT NULL DEFAULT 0"),
         ("managers", "consent_given_at", "ALTER TABLE managers ADD COLUMN consent_given_at TEXT"),
+        ("referrals", "submissions_approved", "ALTER TABLE referrals ADD COLUMN submissions_approved INTEGER NOT NULL DEFAULT 0"),
+        ("referrals", "withdrawal_done", "ALTER TABLE referrals ADD COLUMN withdrawal_done INTEGER NOT NULL DEFAULT 0"),
+        ("referrals", "activated_at", "ALTER TABLE referrals ADD COLUMN activated_at TEXT"),
+        ("referrals", "total_override_earned", "ALTER TABLE referrals ADD COLUMN total_override_earned REAL NOT NULL DEFAULT 0"),
+        ("managers", "chat_muted_until", "ALTER TABLE managers ADD COLUMN chat_muted_until TEXT"),
     ]
     for table, column, ddl in migrations:
         if not _column_exists(conn, table, column):

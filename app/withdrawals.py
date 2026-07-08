@@ -290,6 +290,9 @@ def admin_confirm_payout(wid):
             "VALUES (?, 'admin', ?, ?, ?)",
             (wid, admin_id, comment or "✅ Администратор подтвердил получение выплаты менеджером.", filename))
 
+    from .referrals import on_withdrawal_completed
+    on_withdrawal_completed(w["manager_id"])
+
     notify(w["manager_id"],
            f"✅ Вывод #{wid} полностью завершён. Теперь можно запросить новый вывод.",
            url_for("withdrawals.index"))

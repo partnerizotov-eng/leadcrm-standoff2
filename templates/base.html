@@ -9,8 +9,22 @@
 </head>
 <body>
 {% if current_manager %}
+{% set chat_unread = unread_chat_count() %}
+{% set total_unread = (unread_notifications or 0) + chat_unread %}
+
+<div class="mobile-topbar">
+  <div class="mobile-topbar-brand">◆ {{ app_name }}</div>
+  <button type="button" class="mobile-menu-btn" onclick="toggleMobileNav()" id="mobile-menu-btn">
+    <span>Меню разделов</span>
+    <span class="mobile-menu-icon">☰</span>
+    {% if total_unread %}<span class="badge-count mobile-menu-badge">{{ total_unread }}</span>{% endif %}
+  </button>
+</div>
+<div class="mobile-nav-backdrop" id="mobile-nav-backdrop" onclick="closeMobileNav()"></div>
+
 <div class="app">
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
+    <button type="button" class="mobile-nav-close" onclick="closeMobileNav()">✕ Закрыть</button>
     <div class="brand">◆ {{ app_name }}</div>
     <nav class="nav">
       <a href="{{ url_for('dashboard.index') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard.index' }}">📊 Обзор</a>
@@ -18,24 +32,27 @@
       <a href="{{ url_for('submissions.index') }}" class="nav-item {{ 'active' if request.endpoint == 'submissions.index' }}">📸 Заявки</a>
       <a href="{{ url_for('withdrawals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'withdrawals.index' }}">💰 Выводы</a>
       <a href="{{ url_for('payouts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'payouts.index' }}">📜 Выплаты</a>
+      <a href="{{ url_for('chat.index') }}" class="nav-item {{ 'active' if request.endpoint == 'chat.index' }}">
+        💬 Чат {% if chat_unread %}<span class="badge-count">{{ chat_unread }}</span>{% endif %}
+      </a>
       <a href="{{ url_for('support_tickets.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('support_tickets.') }}">🎫 Тикеты</a>
+      <a href="{{ url_for('referrals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'referrals.index' }}">🤝 Рефералы</a>
+      <a href="{{ url_for('contest.index') }}" class="nav-item {{ 'active' if request.endpoint == 'contest.index' }}">🏆 Конкурс</a>
       <a href="{{ url_for('scripts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'scripts.index' }}">📝 Скрипты</a>
       <a href="{{ url_for('admin.top_managers') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.top_managers' }}">🏆 Топ менеджеров</a>
-      
+
       <a href="{{ url_for('game.leaderboard') }}" class="nav-item {{ 'active' if request.endpoint == 'game.leaderboard' }}">👑 Топ игроков</a>
       <a href="{{ url_for('game.manager_game_stats') }}" class="nav-item {{ 'active' if request.endpoint == 'game.manager_game_stats' }}">📊 Моя статистика</a>
       {% if current_manager.role == 'admin' %}
       <a href="{{ url_for('managers.index') }}" class="nav-item {{ 'active' if request.endpoint == 'managers.index' }}">👥 Менеджеры</a>
       <a href="{{ url_for('journal.index') }}" class="nav-item {{ 'active' if request.endpoint == 'journal.index' }}">📜 Журнал</a>
-      {% if current_manager.role == 'admin' %}
       <a href="{{ url_for('admin.panel') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.panel' }}">⚙️ Админ-панель</a>
       <a href="{{ url_for('admin.messaging') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.messaging' }}">📢 Рассылка</a>
-      {% endif %}
       {% endif %}
     </nav>
     <div class="nav nav-bottom">
       <div class="who">
-        {{ current_manager.name }} 
+        {{ current_manager.name }}
         <span class="role-pill">{{ 'admin' if current_manager.role == 'admin' else 'менеджер' }}</span>
         <span style="display:block;font-size:12px;color:var(--amber);margin-top:4px;">
           💰 {{ "%.2f"|format(current_manager.balance or 0) }}G
@@ -64,6 +81,66 @@
     {% block content %}{% endblock %}
   </main>
 </div>
+
+<style>
+.mobile-topbar { display: none; }
+.mobile-nav-backdrop { display: none; }
+.mobile-nav-close { display: none; }
+
+@media (max-width: 768px) {
+  .mobile-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--panel, #171a21); border-bottom: 1px solid var(--border, #262b36);
+    position: sticky; top: 0; z-index: 1500;
+  }
+  .mobile-topbar-brand { font-weight: 700; color: var(--accent, #6c8cff); font-size: 15px; }
+  .mobile-menu-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel2, #1b1f29); border: 1px solid var(--border, #262b36); color: var(--text, #e8e9ee);
+    padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; position: relative;
+  }
+  .mobile-menu-icon { font-size: 16px; line-height: 1; }
+  .mobile-menu-badge { position: static !important; margin-left: 2px; }
+
+  .app { flex-direction: column; }
+
+  .sidebar {
+    display: none;
+    position: fixed; inset: 0; z-index: 2000;
+    width: 100%; height: 100%;
+    overflow-y: auto;
+    background: var(--bg, #0f1115);
+    flex-direction: column;
+    padding-bottom: 24px;
+  }
+  body.mobile-nav-open .sidebar { display: flex; }
+  body.mobile-nav-open .mobile-nav-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 1999; background: rgba(0,0,0,0.5);
+  }
+  body.mobile-nav-open { overflow: hidden; }
+
+  .mobile-nav-close {
+    display: block; align-self: flex-end; margin: 14px 16px 0 auto;
+    background: var(--panel2, #1b1f29); border: 1px solid var(--border, #262b36); color: var(--text, #e8e9ee);
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;
+  }
+
+  .sidebar .nav-item { font-size: 16px; padding: 14px 20px; }
+}
+</style>
+
+<script>
+function toggleMobileNav() {
+  document.body.classList.toggle('mobile-nav-open');
+}
+function closeMobileNav() {
+  document.body.classList.remove('mobile-nav-open');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeMobileNav();
+});
+</script>
+
 {% else %}
 {% block guest_content %}{% endblock %}
 {% endif %}

@@ -56,6 +56,10 @@ def complete():
 
         execute("""UPDATE managers SET name=?, email=?, vk_url=?, game_id=?, profile_completed=1, consent_given_at=datetime('now')
                    WHERE id=?""", (full_name.strip(), email.strip(), vk_url.strip(), game_id.strip(), manager_id))
+
+        from .referrals import try_resolve_claims_for_manager
+        try_resolve_claims_for_manager(manager_id, vk_url.strip())
+
         flash("✅ Профиль заполнен, добро пожаловать!", "success")
         return redirect(url_for("dashboard.index"))
 
@@ -84,6 +88,10 @@ def settings():
             else:
                 execute("UPDATE managers SET name=?, email=?, vk_url=?, game_id=? WHERE id=?",
                         (full_name.strip(), email.strip(), vk_url.strip(), game_id.strip(), manager_id))
+
+                from .referrals import try_resolve_claims_for_manager
+                try_resolve_claims_for_manager(manager_id, vk_url.strip())
+
                 flash("✅ Профиль обновлён.", "success")
 
         elif action == "login":

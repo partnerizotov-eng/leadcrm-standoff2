@@ -147,6 +147,12 @@ def review(sub_id):
             conn.execute("UPDATE leads SET participation_count=?, status=?, last_status_change=datetime('now') "
                         "WHERE id=?", (new_count, new_status, sub["lead_id"]))
 
+        # Реферальная система: засчитываем заявку рефереру и, если он уже
+        # активный реферал, начисляем 20% override с этого начисления.
+        from .referrals import on_submission_approved, apply_referral_override
+        on_submission_approved(sub["manager_id"])
+        apply_referral_override(sub["manager_id"], APPROVAL_REWARD, "заявка одобрена")
+
         msg = f"✅ Заявка одобрена! Начислено {APPROVAL_REWARD}G на ваш баланс."
         if comment:
             msg += f" Комментарий: {comment}"
