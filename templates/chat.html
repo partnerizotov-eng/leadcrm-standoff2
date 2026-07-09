@@ -3,7 +3,7 @@
 {% block content %}
 <div class="chat-page-header">
   <h1 style="margin:0;">💬 Общий чат команды</h1>
-  <p class="muted" style="margin:4px 0 0;">Здесь вся команда на связи — вопросы, объявления, поддержка друг друга</p>
+  <p class="muted" style="margin:4px 0 0;">Здесь вся команда на связи — вопросы, объявления, поддержка друг друга 🏖️</p>
 </div>
 
 {% if i_am_muted %}
@@ -48,15 +48,16 @@
   <div class="chat-box" id="chat-box">
     {% for m in messages %}
       {% set mine = m.manager_id == my_manager_id %}
+      {% set is_bot = m.sender_role == 'bot' %}
       <div class="chat-row {{ 'chat-row-mine' if mine else '' }}" data-id="{{ m.id }}">
         {% if not mine %}
-        <div class="chat-avatar" style="background:{{ ['#6C8CFF','#3ECF8E','#E9B949','#E56B6B','#45C4B0','#B58CFF'][m.sender_name|length % 6] }};">
-          {{ m.sender_name[0]|upper }}
+        <div class="chat-avatar {{ 'chat-avatar-bot' if is_bot }}" style="background:{{ '#FFF6E8' if is_bot else ['#6C8CFF','#3ECF8E','#E9B949','#E56B6B','#45C4B0','#B58CFF'][m.sender_name|length % 6] }};">
+          {{ '🤖' if is_bot else m.sender_name[0]|upper }}
         </div>
         {% endif %}
         <div class="chat-bubble-wrap">
-          {% if not mine %}<div class="chat-sender">{% if m.sender_role == 'admin' %}👨‍💼 {% endif %}{{ m.sender_name }}</div>{% endif %}
-          <div class="chat-bubble {{ 'chat-bubble-mine' if mine else 'chat-bubble-theirs' }}">
+          {% if not mine %}<div class="chat-sender">{% if is_bot %}🤖 {% elif m.sender_role == 'admin' %}👨‍💼 {% endif %}{{ m.sender_name }}</div>{% endif %}
+          <div class="chat-bubble {{ 'chat-bubble-bot' if is_bot else ('chat-bubble-mine' if mine else 'chat-bubble-theirs') }}">
             {% if m.message %}<p>{{ m.message }}</p>{% endif %}
             {% if m.attachment_path %}
               {% if m.attachment_type == 'image' %}
@@ -101,8 +102,9 @@
 .chat-page-header { padding-bottom: 4px; }
 
 .chat-shell {
-  background: linear-gradient(180deg, #14161d, #101218);
-  border: 1px solid var(--border); border-radius: 16px;
+  background: var(--panel);
+  border: 3px solid var(--ink, var(--border)); border-radius: 22px;
+  box-shadow: 6px 6px 0 rgba(43,34,80,0.14);
   overflow: hidden; display: flex; flex-direction: column;
 }
 
@@ -111,62 +113,74 @@
   max-height: 560px; overflow-y: auto; padding: 20px;
 }
 
-.chat-row { display: flex; gap: 10px; max-width: 78%; }
+.chat-row {
+  display: flex; gap: 10px; max-width: 78%;
+  animation: chatRowPop 0.35s ease-out backwards;
+}
+@keyframes chatRowPop { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
 .chat-row-mine { align-self: flex-end; flex-direction: row-reverse; max-width: 78%; margin-left: auto; }
 
 .chat-avatar {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  color: #0f1115; font-weight: 800; font-size: 14px;
+  color: #1a1208; font-weight: 800; font-size: 14px;
+  border: 2px solid var(--ink, var(--border));
 }
 
 .chat-bubble-wrap { display: flex; flex-direction: column; min-width: 0; }
 .chat-row-mine .chat-bubble-wrap { align-items: flex-end; }
 
-.chat-sender { font-size: 12px; color: var(--muted); margin-bottom: 4px; padding-left: 2px; }
+.chat-sender { font-size: 12px; color: var(--muted); margin-bottom: 4px; padding-left: 2px; font-weight: 700; }
 
 .chat-bubble {
   padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5;
-  word-break: break-word;
+  word-break: break-word; font-weight: 600;
+  border: 2px solid var(--ink, var(--border));
 }
-.chat-bubble-theirs { background: #1c2029; border-bottom-left-radius: 4px; color: var(--text); }
+.chat-bubble-theirs { background: #FFF6E8; border-bottom-left-radius: 4px; color: var(--text); }
 .chat-bubble-mine {
-  background: linear-gradient(135deg, #6C8CFF, #5470E0);
+  background: linear-gradient(135deg, #2EC5FF, #A66CFF);
   border-bottom-right-radius: 4px; color: #fff;
 }
 .chat-bubble p { margin: 0; }
 .chat-bubble p + * { margin-top: 8px; }
 
-.chat-time { font-size: 10.5px; color: var(--muted); margin-top: 4px; padding: 0 4px; }
+.chat-time { font-size: 10.5px; color: var(--muted); margin-top: 4px; padding: 0 4px; font-weight: 700; }
 
-.chat-attachment-img { max-width: 240px; max-height: 240px; border-radius: 10px; display: block; }
+.chat-attachment-img { max-width: 240px; max-height: 240px; border-radius: 10px; display: block; border: 2px solid var(--ink, var(--border)); }
 .chat-attachment-video { max-width: 280px; border-radius: 10px; display: block; }
 .chat-attachment-audio { width: 240px; }
 
-.chat-input-form { border-top: 1px solid var(--border); padding: 14px; background: #14161d; }
+.chat-input-form { border-top: 3px solid var(--ink, var(--border)); padding: 14px; background: var(--panel2, #FFF6E8); }
 .chat-input-row { display: flex; gap: 8px; align-items: center; }
 .chat-input-row textarea {
   flex: 1; resize: none; min-height: 42px; max-height: 120px; border-radius: 20px !important;
   padding: 10px 16px !important;
 }
 #attach-btn, #record-btn {
-  background: #1b1f29; border: 1px solid var(--border); width: 42px; height: 42px; border-radius: 50%;
+  background: #fff; border: 2.5px solid var(--ink, var(--border)); width: 42px; height: 42px; border-radius: 50%;
   cursor: pointer; font-size: 16px; flex-shrink: 0; display:flex; align-items:center; justify-content:center;
+  box-shadow: 2px 2px 0 rgba(43,34,80,0.15); transition: transform 0.12s ease;
 }
-#record-btn.recording { background: #e56b6b; color: white; border-color: #e56b6b; }
+#attach-btn:hover, #record-btn:hover { transform: translate(-1px,-1px); }
+#record-btn.recording { background: #FF4F6E; color: white; border-color: var(--ink); }
 .chat-send-btn {
-  background: linear-gradient(135deg, #6C8CFF, #5470E0); color: #fff; border: none;
+  background: linear-gradient(135deg, #FFD93D, #FF8A3D); color: #1a1208; border: 2.5px solid var(--ink, var(--border));
   width: 42px; height: 42px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0;
+  box-shadow: 2px 2px 0 rgba(43,34,80,0.15); transition: transform 0.12s ease;
 }
-.attachment-preview { display:flex; justify-content:space-between; align-items:center; background:#1b1f29; padding:8px 12px; border-radius:10px; margin-bottom:8px; font-size:13px; color:var(--muted); }
-.attachment-preview button { background:none; border:none; color:#e56b6b; cursor:pointer; font-size:16px; }
-#recording-indicator { margin-top:8px; color:#e56b6b; font-size:13px; }
-#recording-indicator button { margin-left:8px; background:#262b36; border:none; color:#e8e9ee; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px; }
-.mic-error { margin-top:8px; color:#e56b6b; font-size:12px; background:rgba(229,107,107,0.08); border:1px solid rgba(229,107,107,0.3); border-radius:6px; padding:8px 10px; }
+.chat-send-btn:hover { transform: translate(-1px,-1px) scale(1.05); }
+.attachment-preview { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:8px 12px; border-radius:10px; margin-bottom:8px; font-size:13px; color:var(--muted); border: 2px solid var(--border); font-weight: 700; }
+.attachment-preview button { background:none; border:none; color:#FF4F6E; cursor:pointer; font-size:16px; }
+#recording-indicator { margin-top:8px; color:#FF4F6E; font-size:13px; font-weight: 700; }
+#recording-indicator button { margin-left:8px; background:#fff; border:2px solid var(--border); color:var(--text); padding:4px 10px; border-radius:8px; cursor:pointer; font-size:12px; font-weight: 700; }
+.mic-error { margin-top:8px; color:#C23A55; font-size:12px; background:#FFE0E6; border:2px solid #FF8FA3; border-radius:10px; padding:8px 10px; font-weight: 700; }
 
 @media (max-width: 640px) {
   .chat-row, .chat-row-mine { max-width: 90%; }
 }
+.chat-avatar-bot { border: 2px solid var(--candy-orange, var(--gold)); font-size: 16px; }
+.chat-bubble-bot { background: linear-gradient(135deg, #FFF6E8, #FFE8B0); border: 2px solid var(--candy-orange, var(--gold)); border-bottom-left-radius: 4px; color: var(--text); }
 </style>
 
 <script>

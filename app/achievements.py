@@ -118,22 +118,29 @@ ACHIEVEMENTS = {
 def check_achievements(manager_id):
     """Проверка и выдача достижений"""
     # Получение статистики менеджера
+    # ⚠️ total_earned теперь берётся напрямую из managers.total_earned — этот столбец
+    # уже корректно учитывает заявки, колесо призов, рефералов и конкурсы (обновляется
+    # во всех этих местах). Раньше здесь было жёстко "10G за заявку", что игнорировало
+    # все остальные источники дохода.
+    # ⚠️ total_withdrawals/total_withdrawn теперь считаются по РЕАЛЬНОЙ таблице withdrawals
+    # (вывод голды менеджером в деньги через продажу скина), а не по game_withdrawals
+    # (это отдельная механика — вывод голды ИГРОКА в саму игру, не относится к менеджеру).
     stats = query_one("""
         SELECT 
+            m.total_earned as total_earned,
             COUNT(DISTINCT l.id) as total_leads,
             COUNT(DISTINCT s.id) as total_submissions,
             COUNT(DISTINCT CASE WHEN s.status = 'approved' THEN s.id END) as approved_submissions,
-            COALESCE(SUM(CASE WHEN s.status = 'approved' THEN 10 ELSE 0 END), 0) as total_earned,
             COALESCE(ROUND(CAST(COUNT(DISTINCT CASE WHEN l.status IN ('participated', 'returning') THEN l.id END) AS REAL) / 
             NULLIF(COUNT(DISTINCT l.id), 0) * 100, 1), 0) as conversion_pct,
             COUNT(DISTINCT ga.id) as game_accounts,
-            COUNT(DISTINCT w.id) as total_withdrawals,
-            COALESCE(SUM(w.amount), 0) as total_withdrawn
+            COUNT(DISTINCT CASE WHEN w.payout_admin_confirmed=1 THEN w.id END) as total_withdrawals,
+            COALESCE(SUM(CASE WHEN w.payout_admin_confirmed=1 THEN w.requested_amount ELSE 0 END), 0) as total_withdrawn
         FROM managers m
         LEFT JOIN leads l ON l.assigned_manager_id = m.id
         LEFT JOIN submissions s ON s.manager_id = m.id
         LEFT JOIN game_accounts ga ON ga.lead_id = l.id
-        LEFT JOIN game_withdrawals w ON w.manager_id = m.id AND w.status = 'completed'
+        LEFT JOIN withdrawals w ON w.manager_id = m.id
         WHERE m.id = ?
         GROUP BY m.id
     """, (manager_id,))
@@ -172,6 +179,90 @@ def check_achievements(manager_id):
                    "/achievements")
     
     return new_achievements
+
+def trigger_achievement_check(manager_id):
+    """Публичная точка входа для мгновенной проверки достижений сразу после
+    события (одобрение заявки, завершённый вывод) — вместо ожидания захода
+    менеджера на страницу «Достижения»."""
+    check_achievements(manager_id)
+    check_global_achievements()
+
+
+# ==================== ГЛОБАЛЬНЫЕ (КОМАНДНЫЕ) ДОСТИЖЕНИЯ ====================
+# В отличие от личных, эти разблокируются один раз на весь проект и видны
+# всем менеджерам сразу — как командный милстоун, а не личный прогресс.
+
+GLOBAL_ACHIEVEMENTS = {
+    "team_100_approved": {
+        "id": "team_100_approved", "name": "🎯 Сотня одобрений",
+        "description": "Команда суммарно получила 100 одобренных заявок", "icon": "🎯",
+        "condition": lambda s: s.get("total_approved", 0) >= 100,
+    },
+    "team_500_approved": {
+        "id": "team_500_approved", "name": "🚀 Пятьсот одобрений",
+        "description": "Команда суммарно получила 500 одобренных заявок", "icon": "🚀",
+        "condition": lambda s: s.get("total_approved", 0) >= 500,
+    },
+    "team_10_managers": {
+        "id": "team_10_managers", "name": "👥 Полная команда",
+        "description": "В проекте работает 10 и более активных менеджеров", "icon": "👥",
+        "condition": lambda s: s.get("active_managers", 0) >= 10,
+    },
+    "team_10_withdrawals": {
+        "id": "team_10_withdrawals", "name": "💰 Первые 10 выводов",
+        "description": "Команда завершила 10 подтверждённых выводов голды", "icon": "💰",
+        "condition": lambda s: s.get("total_withdrawals", 0) >= 10,
+    },
+    "team_50000_earned": {
+        "id": "team_50000_earned", "name": "💎 50 000G заработано командой",
+        "description": "Суммарный заработок всей команды достиг 50 000G", "icon": "💎",
+        "condition": lambda s: s.get("total_earned_team", 0) >= 50000,
+    },
+    "team_5_referrals": {
+        "id": "team_5_referrals", "name": "🤝 Реферальная сеть",
+        "description": "5 активных реферальных связей внутри команды", "icon": "🤝",
+        "condition": lambda s: s.get("active_referrals", 0) >= 5,
+    },
+}
+
+
+def check_global_achievements():
+    row = query_one("""
+        SELECT
+            COALESCE(SUM(m.total_earned), 0) as total_earned_team,
+            COUNT(DISTINCT CASE WHEN m.role='manager' AND m.is_active=1 THEN m.id END) as active_managers
+        FROM managers m
+    """)
+    team_stats = dict(row) if row else {}
+
+    approved_row = query_one("SELECT COUNT(*) c FROM submissions WHERE status='approved'")
+    team_stats["total_approved"] = approved_row["c"] if approved_row else 0
+
+    wd_row = query_one("SELECT COUNT(*) c FROM withdrawals WHERE payout_admin_confirmed=1")
+    team_stats["total_withdrawals"] = wd_row["c"] if wd_row else 0
+
+    ref_row = query_one("SELECT COUNT(*) c FROM referrals WHERE status='active'")
+    team_stats["active_referrals"] = ref_row["c"] if ref_row else 0
+
+    new_global = []
+    for ach_id, ach in GLOBAL_ACHIEVEMENTS.items():
+        existing = query_one("SELECT id FROM global_achievements WHERE achievement_id=?", (ach_id,))
+        if not existing and ach["condition"](team_stats):
+            execute("""INSERT INTO global_achievements (achievement_id, name, description, icon)
+                       VALUES (?, ?, ?, ?)""", (ach_id, ach["name"], ach["description"], ach["icon"]))
+            new_global.append(ach)
+
+            managers = query_all("SELECT id FROM managers")
+            for m in managers:
+                notify(m["id"],
+                       f"🌍 Командное достижение разблокировано! {ach['icon']} {ach['name']} — {ach['description']}",
+                       "/achievements")
+
+            from .chatbot import announce_global_achievement
+            announce_global_achievement(f"{ach['icon']} {ach['name']}", ach['description'])
+
+    return new_global
+
 
 def calculate_streak(manager_id):
     """Расчет серии дней активности"""
@@ -213,19 +304,25 @@ def index():
     
     # Проверка новых достижений
     new_ach = check_achievements(manager_id)
-    
+    new_global = check_global_achievements()
+
+    global_achievements = query_all("SELECT * FROM global_achievements ORDER BY unlocked_at DESC")
+
     # Статистика
     total = len(ACHIEVEMENTS)
     unlocked = len(achievements)
     progress = round((unlocked / total * 100), 1) if total > 0 else 0
-    
+
     return render_template("achievements.html",
                           achievements=[dict(a) for a in achievements],
                           all_achievements=ACHIEVEMENTS,
                           total=total,
                           unlocked=unlocked,
                           progress=progress,
-                          new_achievements=new_ach)
+                          new_achievements=new_ach,
+                          global_achievements=[dict(g) for g in global_achievements],
+                          all_global_achievements=GLOBAL_ACHIEVEMENTS,
+                          new_global=new_global)
 
 @bp.route("/check")
 @login_required

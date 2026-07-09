@@ -100,6 +100,9 @@ def register():
                        f"Как только он одобрит {REQUIRED_APPROVED_SUBMISSIONS} заявки и сделает вывод — вы получите {ACTIVATION_BONUS}G.",
                        "/referrals")
 
+        from .chatbot import announce_new_manager
+        announce_new_manager(name)
+
         flash("✅ Регистрация успешна! Войдите в систему.", "success")
         return redirect(url_for("auth.login"))
 
@@ -141,6 +144,10 @@ def _check_activation(manager_id):
                f"🎉 Реферал {referred['name']} выполнил условия! Начислено {ACTIVATION_BONUS}G. "
                f"Теперь вы получаете {OVERRIDE_PCT}% от всех его будущих доходов — бессрочно.",
                "/referrals")
+
+        referrer_row = query_one("SELECT name FROM managers WHERE id=?", (ref["referrer_id"],))
+        from .chatbot import announce_referral_activated
+        announce_referral_activated(referrer_row["name"] if referrer_row else "Менеджер", referred["name"])
 
 
 def apply_referral_override(manager_id, earned_amount, source_reason):

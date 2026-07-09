@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{{ app_name }}{% endblock %} · {{ app_name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/candy-theme.css') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 </head>
-<body>
+<body{% if current_manager %} data-tour-active='{{ get_active_tour()|tojson }}' data-tour-replay='{{ get_tour_for_replay()|tojson }}'{% endif %}>
 {% if current_manager %}
 {% set chat_unread = unread_chat_count() %}
 {% set total_unread = (unread_notifications or 0) + chat_unread %}
@@ -38,6 +39,10 @@
       <a href="{{ url_for('support_tickets.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('support_tickets.') }}">🎫 Тикеты</a>
       <a href="{{ url_for('referrals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'referrals.index' }}">🤝 Рефералы</a>
       <a href="{{ url_for('contest.index') }}" class="nav-item {{ 'active' if request.endpoint == 'contest.index' }}">🏆 Конкурс</a>
+      <a href="{{ url_for('advent_calendar.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('advent_calendar.') }}">🗓️ Календарь</a>
+      <a href="{{ url_for('wheel.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('wheel.') }}">🎡 Колесо призов</a>
+      <a href="{{ url_for('puzzle.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('puzzle.') }}">🧩 Пазл</a>
+      <a href="{{ url_for('achievements.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('achievements.') }}">🏆 Достижения</a>
       <a href="{{ url_for('scripts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'scripts.index' }}">📝 Скрипты</a>
       <a href="{{ url_for('admin.top_managers') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.top_managers' }}">🏆 Топ менеджеров</a>
 
@@ -48,6 +53,7 @@
       <a href="{{ url_for('journal.index') }}" class="nav-item {{ 'active' if request.endpoint == 'journal.index' }}">📜 Журнал</a>
       <a href="{{ url_for('admin.panel') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.panel' }}">⚙️ Админ-панель</a>
       <a href="{{ url_for('admin.messaging') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.messaging' }}">📢 Рассылка</a>
+      <a href="{{ url_for('db_export.backups_list') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('db_export.') }}">💾 Бэкапы</a>
       {% endif %}
     </nav>
     <div class="nav nav-bottom">
@@ -70,6 +76,13 @@
       <a href="{{ url_for('auth.logout') }}" class="nav-item">🚪 Выйти</a>
     </div>
   </aside>
+  <div class="ambient-deco">
+    <span class="ambient-item" style="top:6%; left:4%; font-size:30px; animation-delay:0s;">☀️</span>
+    <span class="ambient-item" style="top:14%; right:6%; font-size:24px; animation-delay:1.2s;">⭐</span>
+    <span class="ambient-item" style="top:70%; left:3%; font-size:22px; animation-delay:2.4s;">✨</span>
+    <span class="ambient-item" style="top:82%; right:8%; font-size:26px; animation-delay:0.8s;">🌈</span>
+    <span class="ambient-item" style="top:40%; right:2%; font-size:20px; animation-delay:3.1s;">🎈</span>
+  </div>
   <main class="content">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -127,6 +140,46 @@
 
   .sidebar .nav-item { font-size: 16px; padding: 14px 20px; }
 }
+
+.tour-intro-overlay {
+  position: fixed; inset: 0; z-index: 5100; background: rgba(43,34,80,0.55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.tour-intro-card {
+  background: var(--panel); border: 4px solid var(--ink, var(--border)); border-radius: 24px; padding: 32px 36px;
+  text-align: center; max-width: 340px; box-shadow: 8px 8px 0 rgba(43,34,80,0.25);
+  animation: tourIntroPop 0.3s ease-out;
+}
+@keyframes tourIntroPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.tour-intro-icon { font-size: 44px; margin-bottom: 10px; }
+.tour-intro-title { font-family: 'Fredoka', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.tour-intro-text { font-size: 13.5px; color: var(--muted); margin-bottom: 20px; font-weight: 700; }
+.tour-intro-buttons { display: flex; gap: 10px; justify-content: center; }
+
+.tour-spotlight-target {
+  position: relative !important; z-index: 5001 !important;
+  box-shadow: 0 0 0 6px var(--candy-orange, #FFC857), 0 0 0 9999px rgba(43,34,80,0.6) !important;
+  border-radius: 14px !important; transition: box-shadow 0.3s ease;
+}
+.tour-tooltip {
+  position: absolute; z-index: 5002; background: var(--panel); border: 3px solid var(--ink, var(--border)); border-radius: 16px;
+  padding: 16px 18px; max-width: 300px; box-shadow: 6px 6px 0 rgba(43,34,80,0.25);
+  animation: tourTooltipPop 0.25s ease-out;
+}
+@keyframes tourTooltipPop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.tour-tooltip-progress { font-size: 10.5px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+.tour-tooltip-title { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+.tour-tooltip-text { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 14px; font-weight: 600; }
+.tour-tooltip-buttons { display: flex; gap: 8px; justify-content: space-between; }
+
+.tour-replay-fab {
+  position: fixed; bottom: 20px; right: 20px; z-index: 4000;
+  height: 48px; padding: 0 18px; border-radius: 24px; font-size: 14px; font-weight: 800; font-family: 'Fredoka', sans-serif; display: flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, #FFD93D, #FF8A3D); border: 3px solid var(--ink, var(--border));
+  box-shadow: 4px 4px 0 rgba(43,34,80,0.2); cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.tour-replay-fab:hover { transform: scale(1.08) rotate(-4deg); }
 </style>
 
 <script>
@@ -138,6 +191,145 @@ function closeMobileNav() {
 }
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeMobileNav();
+});
+
+// Глобальный "оживитель" — работает на КАЖДОЙ странице без правки шаблонов
+document.addEventListener('DOMContentLoaded', function() {
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Числа в .kpi-value сами "набегают" от 0 при загрузке страницы
+  document.querySelectorAll('.kpi-value').forEach(function(el) {
+    var raw = el.textContent.replace(/[^0-9.\-]/g, '');
+    var target = parseFloat(raw);
+    if (isNaN(target) || reduceMotion) return;
+    var suffix = el.textContent.replace(/^[^a-zA-Zа-яА-Я%]*[0-9.\-]+/, '').trim();
+    var isDecimal = raw.indexOf('.') !== -1;
+    var duration = 900, start = null;
+    function step(ts) {
+      if (!start) start = ts;
+      var p = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      var val = target * eased;
+      el.textContent = (isDecimal ? val.toFixed(2) : Math.round(val)) + (suffix ? ' ' + suffix : '');
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = (isDecimal ? target.toFixed(2) : target) + (suffix ? ' ' + suffix : '');
+    }
+    requestAnimationFrame(step);
+  });
+
+  // Мини-конфетти при успешном действии (зелёный flash)
+  // ==================== Пошаговые туры-подсказки ====================
+  function startTour(tour, isFirstVisit) {
+    if (!tour) return;
+    var stepIndex = 0;
+    var tooltipEl = null, currentTarget = null;
+
+    function cleanupTarget() {
+      if (currentTarget) {
+        currentTarget.classList.remove('tour-spotlight-target');
+        currentTarget = null;
+      }
+    }
+    function finishTour() {
+      cleanupTarget();
+      if (tooltipEl) { tooltipEl.remove(); tooltipEl = null; }
+      fetch("/tours/mark-seen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tour_key: tour.key }),
+      }).catch(function() {});
+    }
+    function showStep(i) {
+      cleanupTarget();
+      if (tooltipEl) { tooltipEl.remove(); tooltipEl = null; }
+      if (i >= tour.steps.length) { finishTour(); return; }
+      var step = tour.steps[i];
+      var target = document.querySelector(step.selector);
+      if (!target) { showStep(i + 1); return; }
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      currentTarget = target;
+      setTimeout(function() {
+        target.classList.add('tour-spotlight-target');
+        tooltipEl = document.createElement('div');
+        tooltipEl.className = 'tour-tooltip';
+        tooltipEl.innerHTML =
+          '<div class="tour-tooltip-progress">' + (i + 1) + ' / ' + tour.steps.length + '</div>' +
+          '<div class="tour-tooltip-title">' + step.title + '</div>' +
+          '<div class="tour-tooltip-text">' + step.text + '</div>' +
+          '<div class="tour-tooltip-buttons">' +
+            '<button type="button" class="btn btn-soft btn-sm" id="tour-skip-btn">Пропустить всё</button>' +
+            '<button type="button" class="btn btn-gold btn-sm" id="tour-next-btn">' + (i + 1 === tour.steps.length ? 'Готово! ✅' : 'Дальше →') + '</button>' +
+          '</div>';
+        document.body.appendChild(tooltipEl);
+        var rect = target.getBoundingClientRect();
+        var tRect = tooltipEl.getBoundingClientRect();
+        var top = rect.bottom + window.scrollY + 14;
+        var left = rect.left + window.scrollX;
+        if (left + tRect.width > window.innerWidth - 16) left = window.innerWidth - tRect.width - 16;
+        if (top + tRect.height > window.scrollY + window.innerHeight - 16) top = rect.top + window.scrollY - tRect.height - 14;
+        tooltipEl.style.top = top + 'px';
+        tooltipEl.style.left = Math.max(16, left) + 'px';
+        document.getElementById('tour-next-btn').addEventListener('click', function() { showStep(i + 1); });
+        document.getElementById('tour-skip-btn').addEventListener('click', finishTour);
+      }, 350);
+    }
+
+    if (isFirstVisit) {
+      var intro = document.createElement('div');
+      intro.className = 'tour-intro-overlay';
+      intro.innerHTML =
+        '<div class="tour-intro-card">' +
+          '<div class="tour-intro-icon">🎓</div>' +
+          '<div class="tour-intro-title">Добро пожаловать в раздел «' + tour.title + '»!</div>' +
+          '<p class="tour-intro-text">Хочешь короткую экскурсию по этой странице?</p>' +
+          '<div class="tour-intro-buttons">' +
+            '<button type="button" class="btn btn-soft" id="tour-skip-intro">Пропустить</button>' +
+            '<button type="button" class="btn btn-gold" id="tour-start-btn">Начать 🚀</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(intro);
+      document.getElementById('tour-start-btn').addEventListener('click', function() { intro.remove(); showStep(0); });
+      document.getElementById('tour-skip-intro').addEventListener('click', function() { intro.remove(); finishTour(); });
+    } else {
+      showStep(0);
+    }
+  }
+
+  var tourActive = null, tourReplay = null;
+  try { tourActive = JSON.parse(document.body.dataset.tourActive || 'null'); } catch (e) {}
+  try { tourReplay = JSON.parse(document.body.dataset.tourReplay || 'null'); } catch (e) {}
+
+  if (tourReplay) {
+    var replayBtn = document.createElement('button');
+    replayBtn.type = 'button';
+    replayBtn.className = 'tour-replay-fab';
+    replayBtn.innerHTML = '🎓 Обучение';
+    replayBtn.title = 'Повторить экскурсию по разделу';
+    replayBtn.addEventListener('click', function() { startTour(tourReplay, false); });
+    document.body.appendChild(replayBtn);
+  }
+  if (tourActive) {
+    setTimeout(function() { startTour(tourActive, true); }, 500);
+  }
+
+  if (!reduceMotion && document.querySelector('.flash:not(.flash-error):not(.flash-warning)')) {
+    var colors = ['#FF4FA3', '#2EC5FF', '#7ED957', '#FFD93D', '#A66CFF'];
+    for (var i = 0; i < 18; i++) {
+      var p = document.createElement('div');
+      var size = 5 + Math.random() * 5;
+      p.style.cssText = 'position:fixed;top:-10px;left:' + (Math.random()*100) + 'vw;width:' + size + 'px;height:' +
+        (size*0.4) + 'px;background:' + colors[Math.floor(Math.random()*colors.length)] +
+        ';z-index:9999;pointer-events:none;border-radius:2px;';
+      var dx = (Math.random()*160-80) + 'px', rot = (Math.random()*500-250) + 'deg', dur = (1.4+Math.random()) + 's';
+      p.animate(
+        [{ transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+         { transform: 'translate(' + dx + ', 100vh) rotate(' + rot + ')', opacity: 0 }],
+        { duration: parseFloat(dur)*1000, easing: 'ease-in' }
+      );
+      document.body.appendChild(p);
+      setTimeout(function(el){ return function(){ el.remove(); }; }(p), 2600);
+    }
+  }
 });
 </script>
 

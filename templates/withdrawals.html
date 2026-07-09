@@ -33,7 +33,7 @@
               <label>Сумма (минимум {{ min_withdrawal }}G)</label>
               <input type="number" name="amount" min="{{ min_withdrawal }}" step="0.01" required>
             </div>
-            <button type="submit" class="btn-primary btn-auto">Запросить</button>
+            <button type="submit" class="btn btn-primary btn-auto">Запросить</button>
           </form>
         </div>
       </div>
@@ -112,7 +112,7 @@
             <label>📎 Прикрепи скриншот продажи скина</label>
             <div class="upload-row">
               <input type="file" name="screenshot" accept="image/*" required>
-              <button type="submit" class="btn-primary btn-auto">Отправить</button>
+              <button type="submit" class="btn btn-primary btn-auto">Отправить</button>
             </div>
           </form>
         {% endif %}
@@ -123,12 +123,12 @@
             <form method="POST" action="{{ url_for('withdrawals.complete', wid=w.id) }}" class="admin-action-form">
               {{ csrf_field() }}
               <input type="text" name="comment" placeholder="Комментарий (опц.)">
-              <button type="submit" class="btn-success">✅ Подтвердить</button>
+              <button type="submit" class="btn btn-success">✅ Подтвердить</button>
             </form>
             <form method="POST" action="{{ url_for('withdrawals.reject', wid=w.id) }}" class="admin-action-form">
               {{ csrf_field() }}
               <input type="text" name="comment" placeholder="Причина отклонения">
-              <button type="submit" class="btn-danger">❌ Отклонить</button>
+              <button type="submit" class="btn btn-danger">❌ Отклонить</button>
             </form>
           </div>
         {% endif %}
@@ -140,7 +140,7 @@
             {{ csrf_field() }}
             <div class="upload-row">
               <input type="file" name="screenshot" accept="image/*" required>
-              <button type="submit" class="btn-gold btn-auto">Отправить на проверку</button>
+              <button type="submit" class="btn btn-gold btn-auto">Отправить на проверку</button>
             </div>
           </form>
         {% endif %}
@@ -159,14 +159,14 @@
               <div class="upload-row">
                 <input type="file" name="admin_screenshot" accept="image/*" required>
                 <input type="text" name="comment" placeholder="Комментарий (опц.)" style="flex:1; min-width:140px;">
-                <button type="submit" class="btn-gold btn-auto">✅ Подтвердить окончательно</button>
+                <button type="submit" class="btn btn-gold btn-auto">✅ Подтвердить окончательно</button>
               </div>
             </form>
             <form method="POST" action="{{ url_for('withdrawals.admin_reject_payout', wid=w.id) }}">
               {{ csrf_field() }}
               <div class="upload-row">
                 <input type="text" name="comment" placeholder="Причина отклонения скрина менеджера">
-                <button type="submit" class="btn-danger btn-auto">❌ Отклонить скрин</button>
+                <button type="submit" class="btn btn-danger btn-auto">❌ Отклонить скрин</button>
               </div>
             </form>
           </div>
@@ -185,7 +185,7 @@
           <label>Комиссия (%)</label>
           <input type="number" name="commission_pct" min="0" max="90" step="0.1" required>
         </div>
-        <button type="submit" class="btn-primary btn-auto">Сохранить</button>
+        <button type="submit" class="btn btn-primary btn-auto">Сохранить</button>
       </form>
     </div>
   </div>
@@ -198,23 +198,24 @@
   margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
 }
 .balance-chip {
-  background: linear-gradient(135deg, #1b1f29, #171a21);
-  border: 1px solid #262b36; border-radius: 10px; padding: 10px 18px;
+  background: linear-gradient(135deg, #FFF6E8, #FFE8B0);
+  border: 3px solid var(--ink, var(--border)); border-radius: 14px; padding: 10px 18px;
   display: flex; flex-direction: column; gap: 2px;
+  box-shadow: 3px 3px 0 rgba(43,34,80,0.12);
 }
-.balance-chip span { color: #8a90a2; font-size: 12px; }
-.balance-chip strong { color: #3ecf8e; font-size: 20px; }
+.balance-chip span { color: var(--muted); font-size: 12px; font-weight: 700; }
+.balance-chip strong { color: #2C8A4A; font-size: 20px; font-family: 'Fredoka', sans-serif; }
 
 .banner {
   display: flex; gap: 14px; align-items: flex-start;
-  padding: 16px; border-radius: 10px; margin-bottom: 20px;
+  padding: 16px; border-radius: 14px; margin-bottom: 20px;
 }
-.banner-warning { background: rgba(233,185,73,0.08); border: 1px solid rgba(233,185,73,0.3); }
+.banner-warning { background: #FFF3C4; border: 2.5px solid #FFD93D; }
 .banner-icon { font-size: 26px; }
-.banner strong { color: #e9b949; }
-.banner p { margin: 6px 0 0 0; font-size: 13px; color: #c9ccd6; line-height: 1.5; }
+.banner strong { color: #A67A00; font-family: 'Fredoka', sans-serif; }
+.banner p { margin: 6px 0 0 0; font-size: 13px; color: var(--text); line-height: 1.5; font-weight: 700; }
 
-.wd-request-card { border-left: 3px solid #6c8cff; margin-bottom: 20px; }
+.wd-request-card { border-left: 4px solid var(--accent); margin-bottom: 20px; }
 
 .row-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .field-grow { flex: 1; min-width: 180px; }
@@ -223,42 +224,47 @@
 
 .filters-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
 .filter-pill {
-  padding: 7px 15px; border-radius: 20px; background-color: #1b1f29;
-  border: 1px solid #262b36; color: #8a90a2; text-decoration: none;
-  font-size: 13px; transition: all 0.2s; white-space: nowrap;
+  padding: 7px 15px; border-radius: 20px; background-color: var(--panel2, #FFF6E8);
+  border: 2px solid var(--border); color: var(--muted); text-decoration: none;
+  font-size: 13px; font-weight: 700; transition: all 0.2s; white-space: nowrap;
 }
-.filter-pill:hover { border-color: #6c8cff; color: #e8e9ee; }
-.filter-pill.active { background-color: #6c8cff; color: white; border-color: #6c8cff; }
+.filter-pill:hover { border-color: var(--accent); color: var(--text); }
+.filter-pill.active { background-color: var(--accent); color: white; border-color: var(--accent); }
 
-.empty-state { text-align: center; padding: 50px 20px; color: #8a90a2; background: #171a21; border-radius: 10px; }
+.empty-state {
+  text-align: center; padding: 50px 20px; color: var(--muted); background: var(--panel2, #FFF6E8);
+  border: 2.5px dashed var(--border); border-radius: 16px; font-weight: 700;
+}
 
 .wd-list { display: flex; flex-direction: column; gap: 14px; }
 .wd-card {
-  background-color: #171a21; border: 1px solid #262b36; border-radius: 12px;
-  padding: 16px; transition: border-color 0.2s;
+  background-color: var(--panel); border: 3px solid var(--ink, var(--border)); border-radius: 16px;
+  padding: 16px; transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 4px 4px 0 rgba(43,34,80,0.1);
 }
-.wd-card:hover { border-color: #33394a; }
+.wd-card:hover { transform: translateY(-2px); box-shadow: 5px 6px 0 rgba(43,34,80,0.14); }
 
 .wd-card-top {
   display: flex; justify-content: space-between; align-items: center;
   flex-wrap: wrap; gap: 10px; margin-bottom: 10px;
 }
 .wd-title { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-.wd-id { color: #8a90a2; font-size: 13px; }
-.wd-manager { font-weight: 600; }
-.wd-amount { color: #3ecf8e; font-weight: 700; font-size: 16px; }
+.wd-id { color: var(--muted); font-size: 13px; font-weight: 700; }
+.wd-manager { font-weight: 800; font-family: 'Fredoka', sans-serif; }
+.wd-amount { color: #2C8A4A; font-weight: 800; font-size: 16px; }
 
 .status-badge {
-  padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 800; white-space: nowrap;
+  border: 1.5px solid var(--border);
 }
-.status-awaiting_listing { background: rgba(233,185,73,0.15); color: #e9b949; }
-.status-proof_submitted { background: rgba(108,140,255,0.15); color: #6c8cff; }
-.status-completed { background: rgba(62,207,142,0.15); color: #3ecf8e; }
-.status-waiting-payout { background: rgba(255,215,0,0.15); color: #ffd700; }
-.status-rejected { background: rgba(229,107,107,0.15); color: #e56b6b; }
+.status-awaiting_listing { background: #FFF3C4; color: #A67A00; }
+.status-proof_submitted { background: #D9F0FF; color: #0B7FBF; }
+.status-completed { background: #DFF7E4; color: #2C8A4A; }
+.status-waiting-payout { background: #FFF3C4; color: #B8860B; }
+.status-rejected { background: #FFE0E6; color: #C23A55; }
 
-.wd-meta { display: flex; gap: 18px; flex-wrap: wrap; color: #8a90a2; font-size: 12px; margin-bottom: 10px; }
-.wd-meta b { color: #e8e9ee; }
+.wd-meta { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-bottom: 10px; font-weight: 700; }
+.wd-meta b { color: var(--text); }
 .wd-date { margin-left: auto; }
 
 .screenshots-row {
@@ -269,54 +275,49 @@
   width: 140px;
 }
 .screenshot-thumb img {
-  width: 140px; height: 100px; object-fit: cover; border-radius: 8px;
-  border: 1px solid #262b36; transition: border-color 0.2s;
+  width: 140px; height: 100px; object-fit: cover; border-radius: 10px;
+  border: 2.5px solid var(--border); transition: border-color 0.2s;
 }
-.screenshot-thumb:hover img { border-color: #6c8cff; }
+.screenshot-thumb:hover img { border-color: var(--accent); }
 .screenshot-thumb span {
-  font-size: 11px; color: #8a90a2; text-align: center;
+  font-size: 11px; color: var(--muted); text-align: center; font-weight: 700;
 }
 
 .wd-timeline { margin: 10px 0; }
 .wd-timeline summary {
-  cursor: pointer; color: #6c8cff; font-size: 13px; padding: 6px 0;
-  list-style: none;
+  cursor: pointer; color: var(--accent); font-size: 13px; padding: 6px 0;
+  list-style: none; font-weight: 700;
 }
 .wd-timeline summary::-webkit-details-marker { display: none; }
 .wd-timeline summary::before { content: "▸ "; }
 .wd-timeline[open] summary::before { content: "▾ "; }
-.event-item { padding: 8px 0 8px 12px; border-left: 2px solid #262b36; margin-top: 6px; }
-.event-meta { display: flex; justify-content: space-between; font-size: 11px; color: #8a90a2; }
-.event-item p { margin: 4px 0; font-size: 13px; }
+.event-item { padding: 8px 0 8px 12px; border-left: 2.5px solid var(--border); margin-top: 6px; }
+.event-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-weight: 700; }
+.event-item p { margin: 4px 0; font-size: 13px; font-weight: 600; }
 
 .action-box {
-  margin-top: 12px; padding: 14px; border-radius: 8px; background-color: #1b1f29;
+  margin-top: 12px; padding: 14px; border-radius: 12px; background-color: var(--panel2, #FFF6E8);
+  border: 2px solid var(--border);
 }
-.action-box-blue { border-left: 3px solid #6c8cff; }
-.action-box-gold { border-left: 3px solid #ffd700; background: rgba(255,215,0,0.06); }
-.action-box label { display: block; margin-bottom: 10px; font-size: 13px; color: #c9ccd6; font-weight: 500; }
+.action-box-blue { border-left: 4px solid var(--accent); }
+.action-box-gold { border-left: 4px solid var(--candy-orange, var(--gold)); background: #FFF6E8; }
+.action-box label { display: block; margin-bottom: 10px; font-size: 13px; color: var(--text); font-weight: 700; }
 .upload-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .upload-row input[type="file"] { flex: 1; min-width: 180px; }
 .upload-row input[type="text"] { flex: 1; min-width: 140px; }
-
-.btn-gold {
-  background-color: #ffd700; color: #0f1115; border: none; border-radius: 6px;
-  padding: 10px 20px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
-}
-.btn-gold:hover { opacity: 0.85; }
 
 .admin-actions { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
 .admin-action-form { flex: 1; min-width: 220px; display: flex; gap: 8px; }
 .admin-action-form input[type="text"] { flex: 1; }
 
 .waiting-note {
-  margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px;
-  background: rgba(255,215,0,0.06); border: 1px dashed rgba(255,215,0,0.3); color: #ffd700;
+  margin-top: 12px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700;
+  background: #FFF3C4; border: 2px dashed #FFD93D; color: #A67A00;
 }
 
 .payouts-section { margin-top: 36px; }
 .payouts-section h2 { font-size: 18px; margin-bottom: 16px; }
-.payout-card { border-color: rgba(62,207,142,0.25); }
+.payout-card { border-color: #7ED957; box-shadow: 4px 4px 0 rgba(126,217,87,0.25); }
 
 @media (max-width: 768px) {
   .admin-actions { flex-direction: column; }

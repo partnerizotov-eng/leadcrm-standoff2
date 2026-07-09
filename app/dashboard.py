@@ -4,8 +4,15 @@ from .db import query_all, query_one
 from .leads import STATUS_LABELS, STATUSES
 from .managers import manager_stats
 from .security import login_required
+from .contest import get_active_contest_summary
 
 bp = Blueprint("dashboard", __name__)
+
+STATUS_COLORS = {
+    "new": "8A90A2", "contacted": "E9B949", "replied": "6C8CFF",
+    "joined_channel": "45C4B0", "participated": "3ECF8E", "returning": "FFD700",
+    "declined": "E56B6B", "unresponsive": "E56B6B",
+}
 
 
 @bp.route("/")
@@ -23,6 +30,7 @@ def index():
             "SELECT COUNT(*) c FROM withdrawals WHERE status IN ('awaiting_listing','proof_submitted')")["c"]
         total_balance_owed = query_one(
             "SELECT COALESCE(SUM(balance),0) v FROM managers WHERE role='manager'")["v"]
+        total_debt = query_one("SELECT COALESCE(SUM(balance),0) v FROM leads")["v"]
 
         leaderboard = query_all(
             "SELECT m.id, m.name, "
@@ -39,6 +47,7 @@ def index():
 
         my_leads = None
         my_stats = None
+        contest_summary = get_active_contest_summary()
     else:
         funnel = {s: query_one("SELECT COUNT(*) c FROM leads WHERE status=? AND assigned_manager_id=?",
                                (s, manager_id))["c"] for s in STATUSES}
@@ -48,11 +57,16 @@ def index():
         my_leads = query_one("SELECT COUNT(*) c FROM leads WHERE assigned_manager_id=? AND "
                              "status NOT IN ('declined','unresponsive','returning')", (manager_id,))["c"]
         my_stats = next((m for m in manager_stats() if m["id"] == manager_id), None)
+        total_debt = None
+        contest_summary = get_active_contest_summary()
 
     return render_template("dashboard.html", funnel=funnel, total=total, statuses=STATUSES,
-                           status_labels=STATUS_LABELS, leaderboard=leaderboard, top3=top3,
+                           status_labels=STATUS_LABELS, status_colors=STATUS_COLORS,
+                           leaderboard=leaderboard, top3=top3,
                            my_leads=my_leads, my_stats=my_stats,
                            is_admin=(role == "admin"),
                            pending_submissions=pending_submissions,
                            pending_withdrawals=pending_withdrawals,
-                           total_balance_owed=total_balance_owed)
+                           total_balance_owed=total_balance_owed,
+                           total_debt=total_debt,
+                           contest_summary=contest_summary)

@@ -36,6 +36,10 @@ def create_app(config_object=Config):
         return row["c"] if row else 0
     app.jinja_env.globals["unread_chat_count"] = unread_chat_count
 
+    from .tours import get_active_tour, get_tour_for_replay
+    app.jinja_env.globals["get_active_tour"] = get_active_tour
+    app.jinja_env.globals["get_tour_for_replay"] = get_tour_for_replay
+
     def unread_notifications_count():
         manager_id = session.get("manager_id")
         if not manager_id:
@@ -95,14 +99,31 @@ def create_app(config_object=Config):
     from .profile import bp as profile_bp
     from .contest import bp as contest_bp
     from .chat import bp as chat_bp
+    from .wheel import bp as wheel_bp
+    from .tours import bp as tours_bp
+    from .advent_calendar import bp as advent_calendar_bp
     from .db_export import bp as db_export_bp
+    from .puzzle import bp as puzzle_bp
 
     for bp in (auth_bp, leads_bp, scripts_bp, dashboard_bp, managers_bp,
                submissions_bp, withdrawals_bp, notifications_bp, uploads_bp,
                journal_bp, game_bp, achievements_bp, referrals_bp, ai_bp,
                admin_bp, payouts_bp, support_tickets_bp, profile_bp,
-               contest_bp, chat_bp, db_export_bp):
+               contest_bp, chat_bp, db_export_bp, wheel_bp, advent_calendar_bp,
+               puzzle_bp):
         app.register_blueprint(bp)
+
+    from .backup_scheduler import start_backup_scheduler
+    start_backup_scheduler(app)
+
+    from .wheel import ensure_wheel_prizes
+    with app.app_context():
+        ensure_wheel_prizes()
+
+    from .chatbot import ensure_bot_account, start_daily_summary_scheduler
+    with app.app_context():
+        ensure_bot_account()
+    start_daily_summary_scheduler(app)
     
     @app.context_processor
     def inject_notifications():

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Пазл{% endblock %}
+{% block content %}
+
+<div class="puzzle-hero">
+  <div class="puzzle-hero-glow"></div>
+  <div class="puzzle-hero-content">
+    <h1>🧩 {{ current_design.name }}</h1>
+    <p>Картина видна сразу, но тускло. Каждая заявка проявляет свой кусочек ярче. Собери все {{ total_pieces }} — получи от {{ reward_min }} до {{ reward_max }}G и картина навсегда останется в твоей коллекции</p>
+    <a href="{{ url_for('puzzle.gallery') }}" class="btn btn-soft btn-sm" style="margin-top:10px;">🖼️ Моя коллекция</a>
+  </div>
+</div>
+
+<div class="puzzle-layout">
+  <div class="puzzle-board-wrap">
+    <div class="puzzle-progress-line">🍦 Проявлено: <b>{{ owned_count }} / {{ total_pieces }}</b></div>
+
+    <div class="puzzle-board {{ 'puzzle-board-complete' if owned_count >= total_pieces }}">
+      {% for p in pieces %}
+        {% set col = p.index % 3 %}
+        {% set row = (p.index // 3) %}
+        <div class="puzzle-cell {{ 'puzzle-cell-owned' if p.owned else 'puzzle-cell-dim' }}"
+             style="background-image:{{ current_design.image }}; background-size: 300px 300px; background-position: -{{ col * 100 }}px -{{ row * 100 }}px;"></div>
+      {% endfor %}
+
+      {% if owned_count >= total_pieces %}
+      <div class="puzzle-board-trophy">🏆</div>
+      {% endif %}
+    </div>
+
+    {% if owned_count >= total_pieces %}
+      <div class="puzzle-complete-banner">🎉 Картина полностью проявлена! Идёт начисление...</div>
+    {% endif %}
+  </div>
+
+  <div class="puzzle-side">
+    <div class="puzzle-side-card">
+      <div class="puzzle-side-title">📊 Твоя статистика</div>
+      <div class="puzzle-stat-row"><span>Картин собрано всего</span><span class="puzzle-stat-value">{{ total_completed }}</span></div>
+    </div>
+
+    <div class="puzzle-side-card">
+      <div class="puzzle-side-title">🎁 Последние награды</div>
+      {% if completions %}
+        {% for c in completions %}
+          <div class="puzzle-history-row">
+            <span>{{ designs[c.design_id].name if c.design_id in designs else c.design_id }}</span>
+            <span class="muted" style="font-size:11px;">+{{ "%.0f"|format(c.reward) }}G</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted" style="font-size:12.5px;">Пока не собирал ни одной картины — вперёд!</p>
+      {% endif %}
+    </div>
+
+    {% if leaderboard %}
+    <div class="puzzle-side-card">
+      <div class="puzzle-side-title">🏆 Топ по сборкам</div>
+      {% for r in leaderboard %}
+        <div class="puzzle-history-row">
+          <span>{{ r.name }}</span>
+          <span class="muted" style="font-size:11px;">{{ r.completions_count }} шт · {{ "%.0f"|format(r.total_reward) }}G</span>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.puzzle-hero {
+  position: relative; overflow: hidden; text-align: center; padding: 30px 20px;
+  border-radius: 24px; margin-bottom: 22px;
+  background: var(--panel);
+  border: 3px solid var(--ink, var(--border));
+  box-shadow: 5px 5px 0 rgba(43,34,80,0.14);
+}
+.puzzle-hero-glow {
+  position: absolute; inset: -40%; z-index: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(126,217,87,0.20), transparent 55%),
+              radial-gradient(circle at 70% 70%, rgba(255,200,87,0.20), transparent 55%);
+  animation: puzzleGlow 9s ease-in-out infinite alternate;
+}
+@keyframes puzzleGlow { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }
+.puzzle-hero-content { position: relative; z-index: 1; }
+.puzzle-hero h1 { margin: 0 0 6px; font-size: 24px; }
+.puzzle-hero p { color: var(--muted); margin: 0; font-size: 13px; max-width: 420px; margin: 0 auto; font-weight: 700; }
+
+.puzzle-layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; justify-content: center; }
+.puzzle-board-wrap { display: flex; flex-direction: column; align-items: center; }
+.puzzle-progress-line { font-size: 14px; margin-bottom: 14px; font-weight: 800; }
+.puzzle-progress-line b { color: var(--candy-orange, var(--gold)); }
+
+.puzzle-board {
+  position: relative;
+  display: grid; grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px);
+  gap: 3px; width: 306px; padding: 3px;
+  background: var(--panel2, #FFF6E8); border-radius: 20px; border: 3px solid var(--ink, var(--border));
+  box-shadow: 5px 5px 0 rgba(43,34,80,0.12);
+}
+.puzzle-board-complete { border-color: var(--candy-orange, var(--gold)); box-shadow: 0 0 30px rgba(255,200,87,0.35); }
+
+.puzzle-cell {
+  width: 100px; height: 100px; position: relative;
+  clip-path: polygon(22% 0%, 78% 0%, 100% 22%, 100% 78%, 78% 100%, 22% 100%, 0% 78%, 0% 22%);
+  transition: filter 0.7s ease, opacity 0.7s ease, transform 0.4s ease;
+}
+
+.puzzle-cell-dim {
+  filter: grayscale(0.6) brightness(1.15) saturate(0.4) blur(0.3px);
+  opacity: 0.55;
+}
+
+.puzzle-cell-owned {
+  filter: none;
+  opacity: 1;
+  animation: puzzleReveal 0.7s ease-out;
+  box-shadow: 0 0 14px rgba(255,200,87,0.35);
+}
+@keyframes puzzleReveal {
+  0% { filter: grayscale(0.6) brightness(1.15) saturate(0.4); opacity: 0.55; transform: scale(0.9); }
+  60% { transform: scale(1.06); }
+  100% { filter: none; opacity: 1; transform: scale(1); }
+}
+
+.puzzle-board-trophy {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 60px; filter: drop-shadow(0 0 16px rgba(255,200,87,0.8));
+  animation: puzzleTrophyPop 0.6s ease-out;
+  pointer-events: none;
+}
+@keyframes puzzleTrophyPop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.puzzle-complete-banner {
+  margin-top: 16px; padding: 12px 20px; background: #FFF3C4; border: 2.5px solid var(--candy-orange, var(--gold));
+  border-radius: 14px; color: #8A6800; font-weight: 800; text-align: center;
+}
+
+.puzzle-side { width: 300px; display: flex; flex-direction: column; gap: 16px; }
+.puzzle-side-card {
+  background: var(--panel); border: 3px solid var(--ink, var(--border)); border-radius: 18px; padding: 16px 18px;
+  box-shadow: 4px 4px 0 rgba(43,34,80,0.1);
+}
+.puzzle-side-title { font-family: 'Fredoka', sans-serif; font-weight: 700; margin-bottom: 10px; font-size: 14px; }
+.puzzle-stat-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; }
+.puzzle-stat-value { color: var(--candy-orange, var(--gold)); font-weight: 900; }
+.puzzle-history-row { display: flex; justify-content: space-between; padding: 7px 0; border-top: 2px solid #F0EBE0; font-size: 12.5px; font-weight: 700; }
+.puzzle-history-row:first-of-type { border-top: none; }
+
+@media (max-width: 900px) { .puzzle-layout { flex-direction: column; align-items: center; } .puzzle-side { width: 100%; max-width: 306px; } }
+</style>
+{% endblock %}

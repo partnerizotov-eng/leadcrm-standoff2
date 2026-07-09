@@ -443,6 +443,85 @@ CREATE TABLE IF NOT EXISTS referral_claims (
 );
 CREATE INDEX IF NOT EXISTS idx_referral_claims_vk ON referral_claims(vk_id);
 
+CREATE TABLE IF NOT EXISTS wheel_prizes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    label       TEXT    NOT NULL,
+    amount      REAL    NOT NULL,
+    weight      INTEGER NOT NULL DEFAULT 10,
+    color       TEXT    NOT NULL DEFAULT '#6C8CFF',
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT    DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wheel_spins (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER NOT NULL,
+    prize_id    INTEGER,
+    label       TEXT    NOT NULL,
+    amount      REAL    NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE,
+    FOREIGN KEY (prize_id) REFERENCES wheel_prizes(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS global_achievements (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    achievement_id TEXT    NOT NULL UNIQUE,
+    name           TEXT    NOT NULL,
+    description    TEXT,
+    icon           TEXT,
+    unlocked_at    TEXT    DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_date    TEXT    NOT NULL UNIQUE,
+    title         TEXT    NOT NULL,
+    description   TEXT    DEFAULT '',
+    reward_amount REAL,
+    icon          TEXT    DEFAULT '🎁',
+    created_by    INTEGER,
+    created_at    TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (created_by) REFERENCES managers(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(event_date);
+
+CREATE TABLE IF NOT EXISTS calendar_claims (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id    INTEGER NOT NULL,
+    manager_id  INTEGER NOT NULL,
+    claimed_at  TEXT    DEFAULT (datetime('now')),
+    UNIQUE(event_id, manager_id),
+    FOREIGN KEY (event_id) REFERENCES calendar_events(id) ON DELETE CASCADE,
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS puzzle_pieces (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER NOT NULL,
+    piece_index INTEGER NOT NULL,
+    earned_at   TEXT    DEFAULT (datetime('now')),
+    UNIQUE(manager_id, piece_index),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS puzzle_completions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER NOT NULL,
+    reward      REAL    NOT NULL,
+    completed_at TEXT   DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS manager_tours_seen (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id   INTEGER NOT NULL,
+    tour_key     TEXT    NOT NULL,
+    completed_at TEXT    DEFAULT (datetime('now')),
+    UNIQUE(manager_id, tour_key),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS script_usage_logs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     script_id   INTEGER NOT NULL,
@@ -548,6 +627,10 @@ def _migrate(conn):
         ("referrals", "activated_at", "ALTER TABLE referrals ADD COLUMN activated_at TEXT"),
         ("referrals", "total_override_earned", "ALTER TABLE referrals ADD COLUMN total_override_earned REAL NOT NULL DEFAULT 0"),
         ("managers", "chat_muted_until", "ALTER TABLE managers ADD COLUMN chat_muted_until TEXT"),
+        ("managers", "wheel_spins_available", "ALTER TABLE managers ADD COLUMN wheel_spins_available INTEGER NOT NULL DEFAULT 0"),
+        ("managers", "puzzle_current_design", "ALTER TABLE managers ADD COLUMN puzzle_current_design TEXT"),
+        ("puzzle_completions", "design_id", "ALTER TABLE puzzle_completions ADD COLUMN design_id TEXT NOT NULL DEFAULT 'fire'"),
+        ("managers", "is_deleted", "ALTER TABLE managers ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0"),
     ]
     for table, column, ddl in migrations:
         if not _column_exists(conn, table, column):

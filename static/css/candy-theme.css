@@ -1,0 +1,219 @@
+/* ===================================================================
+   Candy Arcade / Summer v2 — насыщенная, живая версия. Переопределяет
+   style.css целиком через переменные и общие классы + добавляет
+   глобальные анимации, которые работают на любой странице.
+   =================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap');
+
+:root {
+  --bg: linear-gradient(135deg, #FFD9A0 0%, #FFB6C9 22%, #C9B8FF 50%, #A6E3FF 78%, #B6FFD9 100%);
+  --panel: #FFFDF7;
+  --panel2: #FFF6E8;
+  --border: #2B2250;
+  --text: #2B2250;
+  --muted: #6E6486;
+  --accent: #2EC5FF;
+  --green: #7ED957;
+  --red: #FF4F6E;
+  --amber: #FFC857;
+  --gold: #FFC857;
+
+  --candy-pink: #FF4FA3;
+  --candy-purple: #A66CFF;
+  --candy-orange: #FF8A3D;
+  --candy-yellow: #FFD93D;
+  --candy-cyan: #2EC5FF;
+  --ink: #2B2250;
+  --paper: #FFFDF7;
+}
+
+body {
+  background: var(--bg);
+  background-size: 300% 300%;
+  animation: bgDrift 22s ease-in-out infinite;
+  font-family: 'Nunito', -apple-system, sans-serif;
+  position: relative;
+}
+@keyframes bgDrift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+h1, h2, .brand, .pass-name { font-family: 'Fredoka', sans-serif; font-weight: 600; }
+h1 { position: relative; display: inline-block; }
+h1::after {
+  content: ''; position: absolute; left: 2px; bottom: -4px; height: 8px; width: 46px;
+  background: linear-gradient(90deg, var(--candy-yellow), var(--candy-pink));
+  border-radius: 6px; opacity: 0.85;
+}
+
+a { color: var(--candy-purple); }
+a:hover { color: var(--candy-pink); }
+
+/* ---------- Скроллбар ---------- */
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: #FFF3E0; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--candy-cyan), var(--candy-purple)); border-radius: 10px; border: 2px solid #FFF3E0; }
+
+/* ---------- Плавающие декорации на КАЖДОЙ странице (фикс-слой) ---------- */
+.ambient-deco { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.ambient-item { position: absolute; opacity: 0.35; animation: ambientFloat 9s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08)); }
+@keyframes ambientFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-22px) rotate(8deg); }
+}
+.content, .sidebar { position: relative; z-index: 1; }
+
+/* ---------- Сайдбар ---------- */
+.sidebar {
+  background: var(--paper);
+  border-right: 4px solid var(--ink);
+  box-shadow: 4px 0 0 rgba(43,34,80,0.05);
+}
+.brand { color: var(--candy-purple); font-size: 19px; }
+
+.nav-item {
+  color: var(--muted); border-radius: 12px; font-weight: 700; margin-bottom: 3px;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.nav-item:hover { transform: translateX(4px) scale(1.02); background: rgba(166,108,255,0.14); color: var(--ink); text-decoration: none; }
+.nav-item.active {
+  background: linear-gradient(120deg, var(--candy-purple), var(--candy-pink));
+  color: #fff; text-decoration: none;
+  box-shadow: 0 3px 10px rgba(166,108,255,0.4);
+  animation: navPulse 2.4s ease-in-out infinite;
+}
+@keyframes navPulse {
+  0%, 100% { box-shadow: 0 3px 10px rgba(166,108,255,0.35); }
+  50% { box-shadow: 0 3px 18px rgba(255,79,163,0.5); }
+}
+.nav-item-highlight { background: linear-gradient(90deg, rgba(255,200,87,0.3), transparent); border-left: 3px solid var(--candy-orange); }
+
+.who { color: var(--ink); font-weight: 800; }
+.role-pill { background: var(--candy-yellow); color: var(--ink); font-weight: 800; border: 1.5px solid var(--ink); }
+.nav-bottom { border-top: 3px solid var(--border); }
+
+/* ---------- Карточки — появляются каскадом ---------- */
+.card, .kpi {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 5px 5px 0 rgba(43,34,80,0.14);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease;
+  animation: cardRise 0.5s cubic-bezier(0.22,1,0.36,1) backwards;
+}
+.card:nth-of-type(1) { animation-delay: 0.03s; }
+.card:nth-of-type(2) { animation-delay: 0.09s; }
+.card:nth-of-type(3) { animation-delay: 0.15s; }
+.card:nth-of-type(4) { animation-delay: 0.21s; }
+.card:nth-of-type(5) { animation-delay: 0.27s; }
+@keyframes cardRise {
+  0% { transform: translateY(14px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.card:hover { transform: translateY(-4px) rotate(-0.3deg); box-shadow: 7px 9px 0 rgba(43,34,80,0.18); }
+
+.kpi { animation: cardRise 0.5s cubic-bezier(0.22,1,0.36,1) backwards; }
+.kpi-label { color: var(--muted); font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.3px; }
+.kpi-value { font-family: 'Fredoka', sans-serif; color: var(--ink); }
+.kpi-value.gold { color: var(--candy-orange); }
+.kpi-value.green { color: #4FAE3A; }
+.kpi-value.red { color: var(--red); }
+
+/* ---------- Кнопки — упругие ---------- */
+.btn {
+  border-radius: 14px; font-weight: 700; font-family: 'Fredoka', sans-serif;
+  border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 0.12s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.12s ease;
+  position: relative; overflow: hidden;
+}
+.btn:hover { transform: translate(-2px,-2px) scale(1.03); box-shadow: 5px 5px 0 var(--ink); text-decoration: none; }
+.btn:active { transform: translate(2px,2px) scale(0.97); box-shadow: 1px 1px 0 var(--ink); }
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #1CB5F5; }
+.btn-success { background: var(--green); color: var(--ink); }
+.btn-success:hover { background: #6BC943; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { background: #E8425F; }
+.btn-soft { background: var(--panel2); color: var(--ink); border-color: #E4D9C8; box-shadow: 3px 3px 0 #E4D9C8; }
+.btn-soft:hover { box-shadow: 5px 5px 0 #E4D9C8; }
+.btn-gold {
+  background: linear-gradient(135deg, var(--candy-yellow), var(--candy-orange));
+  color: var(--ink);
+  background-size: 200% 200%;
+  animation: goldShimmer 3s ease-in-out infinite;
+}
+@keyframes goldShimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.btn-sm { border-width: 2px; box-shadow: 2px 2px 0 var(--ink); }
+
+/* ---------- Бейджи — «новое/ожидает» пульсируют ---------- */
+.badge { border-radius: 10px; font-weight: 800; border: 1.5px solid var(--ink); padding: 2px 9px; }
+.badge-new { background: #EDEAF7; color: var(--muted); }
+.badge-contacted { background: #D9F0FF; color: #0B7FBF; }
+.badge-replied { background: #FFF3C4; color: #A67A00; }
+.badge-joined_channel { background: #DFF7E4; color: #2C8A4A; }
+.badge-participated, .badge-returning { background: #D3F5D8; color: #237A3D; }
+.badge-declined, .badge-unresponsive { background: #FFE0E6; color: #C23A55; }
+.badge-pending { background: #FFF3C4; color: #A67A00; animation: badgePulse 1.8s ease-in-out infinite; }
+.badge-approved, .badge-completed { background: #D3F5D8; color: #237A3D; }
+.badge-rejected { background: #FFE0E6; color: #C23A55; }
+@keyframes badgePulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,200,87,0.5); } 50% { box-shadow: 0 0 0 5px rgba(255,200,87,0); } }
+.badge-top1 { background: linear-gradient(135deg, #FFD93D, #FF8A3D); color: var(--ink); border-color: var(--ink); animation: badgePulse 1.6s ease-in-out infinite; }
+.badge-top2 { background: linear-gradient(135deg, #E4E4EE, #B8B8C8); color: var(--ink); }
+.badge-top3 { background: linear-gradient(135deg, #E8B37A, #C9834A); color: #fff; }
+
+/* ---------- Таблицы ---------- */
+table { font-family: 'Nunito', sans-serif; }
+th { color: var(--muted); font-weight: 800; }
+th, td { border-bottom: 2px solid #F0EBE0; }
+tr { transition: background 0.15s ease, transform 0.15s ease; }
+tr:hover td { background: #FFFBF2; }
+tbody tr:hover { transform: scale(1.004); }
+
+/* ---------- Формы ---------- */
+input, select, textarea {
+  background: #FAFAFF; border: 2.5px solid #E4E0F0; color: var(--ink);
+  border-radius: 12px; font-family: 'Nunito', sans-serif; font-weight: 700;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(46,197,255,0.2);
+}
+label.field { color: var(--muted); font-weight: 800; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* ---------- Флеши / подсказки ---------- */
+.flash { border-radius: 14px; border-width: 2.5px; font-weight: 700; animation: flashPop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes flashPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.flash { background: #DFF7E4; border-color: var(--green); color: #237A3D; }
+.flash-error { background: #FFE0E6; border-color: var(--red); color: #C23A55; }
+.flash-warning { background: #FFF3C4; border-color: var(--candy-orange); color: #A67A00; }
+
+.tip { background: #D9F0FF; border: 2px solid #7CD3FF; color: #0B5C82; border-radius: 14px; font-weight: 700; }
+.tip-warning { background: #FFF3C4; border: 2px solid #FFD93D; color: #8A6800; border-radius: 14px; font-weight: 700; }
+.tip-danger { background: #FFE0E6; border: 2px solid #FF8FA3; color: #A02A42; border-radius: 14px; font-weight: 700; }
+
+.balance-pill {
+  background: linear-gradient(120deg, #FFD93D, #FF8A3D); color: var(--ink);
+  font-weight: 900; border: 1.5px solid var(--ink);
+  background-size: 200% 200%; animation: goldShimmer 3s ease-in-out infinite;
+}
+
+.badge-count { background: var(--candy-pink); border: 1.5px solid var(--ink); font-weight: 800; animation: badgePulse 1.6s ease-in-out infinite; }
+
+/* ---------- Прогресс-бары ---------- */
+.bar-track { background: #F0EBE0; border-radius: 8px; }
+.bar-fill { background: var(--accent); border-radius: 8px; transition: width 0.6s cubic-bezier(0.22,1,0.36,1); }
+.bar-fill.green { background: var(--green); }
+.bar-fill.gold { background: linear-gradient(90deg, #FFD93D, #FF8A3D); background-size: 200% 200%; animation: goldShimmer 2.5s ease-in-out infinite; }
+
+.rank-1 { color: #E8A800; } .rank-2 { color: #9A9AAA; } .rank-3 { color: #B87333; }
+
+.mobile-topbar { background: var(--paper) !important; border-bottom: 3px solid var(--ink) !important; }
+.mobile-topbar-brand { color: var(--candy-purple) !important; }
+.mobile-menu-btn { background: var(--panel2) !important; border: 2.5px solid var(--ink) !important; color: var(--ink) !important; font-weight: 800; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

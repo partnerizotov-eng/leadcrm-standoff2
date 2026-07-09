@@ -12,27 +12,70 @@
     </div>
   </div>
 
+  <div class="contest-pool-line">💰 Призовой фонд: <b>{{ "%.0f"|format(total_prize_pool) }}G</b></div>
+
+  {% set podium_prizes = [1000, 600, 400] %}
   <div class="contest-podium">
-    {% for w in winners[:3] %}
-      <div class="podium-block podium-{{ w.place }}">
-        <div class="podium-medal">{% if w.place==1 %}🥇{% elif w.place==2 %}🥈{% else %}🥉{% endif %}</div>
-        <div class="podium-name">{{ w.name }}</div>
-        <div class="podium-count">{{ w.approved_count }} заявок</div>
-        <div class="podium-prize">+{{ "%.0f"|format(w.amount) }}G</div>
-        <div class="podium-bar"></div>
-      </div>
+    {% for i in range(3) %}
+      {% set place = i + 1 %}
+      {% if winners|length > i %}
+        {% set w = winners[i] %}
+        <div class="podium-block podium-{{ place }}">
+          <div class="podium-medal">{% if place==1 %}🥇{% elif place==2 %}🥈{% else %}🥉{% endif %}</div>
+          <div class="podium-name">{{ w.name }}</div>
+          <div class="podium-count">{{ w.approved_count }} заявок</div>
+          <div class="podium-prize">+{{ "%.0f"|format(w.amount) }}G</div>
+          <div class="podium-bar"></div>
+        </div>
+      {% else %}
+        <div class="podium-block podium-{{ place }} podium-empty">
+          <div class="podium-medal">{% if place==1 %}🥇{% elif place==2 %}🥈{% else %}🥉{% endif %}</div>
+          <div class="podium-name muted">Место свободно</div>
+          <div class="podium-count">—</div>
+          <div class="podium-prize">+{{ podium_prizes[i] }}G</div>
+          <div class="podium-bar"></div>
+        </div>
+      {% endif %}
     {% endfor %}
   </div>
 
-  <div class="contest-leaderboard">
-    {% for w in winners[3:] %}
-      <div class="contest-row contest-place-other">
-        <div class="contest-place-badge">#{{ w.place }}</div>
-        <div class="contest-name">{{ w.name }}</div>
-        <div class="contest-count">{{ w.approved_count }} заявок</div>
-        <div class="contest-prize">+{{ "%.0f"|format(w.amount) }}G</div>
-      </div>
+  <div class="prize-tier-label">4–9 места · по 200G</div>
+  <div class="prize-tier-grid prize-tier-grid-6">
+    {% for i in range(3, 9) %}
+      {% set place = i + 1 %}
+      {% if winners|length > i %}
+        {% set w = winners[i] %}
+        <div class="prize-tile">
+          <div class="prize-tile-rank">#{{ place }}</div>
+          <div class="prize-tile-name">{{ w.name }}</div>
+          <div class="prize-tile-count">{{ w.approved_count }} заявок</div>
+          <div class="prize-tile-prize">+{{ "%.0f"|format(w.amount) }}G</div>
+        </div>
+      {% else %}
+        <div class="prize-tile prize-tile-empty">
+          <div class="prize-tile-rank">#{{ place }}</div>
+          <div class="prize-tile-name muted">свободно</div>
+          <div class="prize-tile-count">—</div>
+          <div class="prize-tile-prize">+200G</div>
+        </div>
+      {% endif %}
     {% endfor %}
+  </div>
+
+  <div class="contest-rules-card">
+    <div class="contest-rules-title">📜 Условия конкурса</div>
+    <ul class="contest-rules-list">
+      <li>Учитываются заявки, <b>одобренные администратором</b> в период с начала до конца конкурса</li>
+      <li>Место определяется по количеству одобренных заявок — чем больше, тем выше место</li>
+      <li>При равном количестве заявок выше тот, кто набрал их раньше</li>
+      <li>Призы начисляются автоматически на баланс после официального подведения итогов администратором</li>
+    </ul>
+    <div class="contest-rules-prizes">
+      <div class="prize-chip prize-chip-gold">🥇 1 место — 1000G</div>
+      <div class="prize-chip prize-chip-silver">🥈 2 место — 600G</div>
+      <div class="prize-chip prize-chip-bronze">🥉 3 место — 400G</div>
+      <div class="prize-chip">4–9 места — по 200G</div>
+    </div>
   </div>
 
 {% elif phase == 'upcoming' %}
@@ -43,9 +86,6 @@
       <h1>{{ contest.title }}</h1>
       <div class="contest-timer" id="contest-timer">—</div>
       <div class="contest-timer-label" id="contest-timer-label">⏳ До старта конкурса</div>
-      <div class="contest-prizes-strip">
-        <span>🥇 1000G</span><span>🥈 500G</span><span>🥉 300G</span><span>4️⃣ 200G</span><span>5–9 · 100G</span>
-      </div>
     </div>
   </div>
 
@@ -68,42 +108,102 @@
       <h1>{{ contest.title }}</h1>
       <div class="contest-timer" id="contest-timer">—</div>
       <div class="contest-timer-label" id="contest-timer-label">🔥 До конца конкурса</div>
-      <div class="contest-prizes-strip">
-        <span>🥇 1000G</span><span>🥈 500G</span><span>🥉 300G</span><span>4️⃣ 200G</span><span>5–9 · 100G</span>
-      </div>
     </div>
   </div>
 
-  <p class="muted" style="text-align:center; margin:14px 0 22px;">
+  <div class="contest-pool-line">💰 Призовой фонд: <b>{{ "%.0f"|format(total_prize_pool) }}G</b></div>
+  <p class="muted" style="text-align:center; margin:0 0 22px;">
     Считаются заявки, одобренные администратором за время конкурса. Топ обновляется автоматически.
   </p>
 
-  {% if leaderboard|length >= 1 %}
+  {% set medals = ['🥇', '🥈', '🥉'] %}
+  {% set podium_prizes = [1000, 600, 400] %}
   <div class="contest-podium">
-    {% for row in leaderboard[:3] %}
-      {% set place = loop.index %}
-      <div class="podium-block podium-{{ place }} {{ 'podium-me' if row.manager_id == my_manager_id }}">
-        <div class="podium-medal">{% if place==1 %}🥇{% elif place==2 %}🥈{% else %}🥉{% endif %}</div>
-        <div class="podium-name">{{ row.name }}{% if row.manager_id == my_manager_id %} 👋{% endif %}</div>
-        <div class="podium-count">{{ row.approved_count }} заявок</div>
-        <div class="podium-bar"></div>
+    {% for i in range(3) %}
+      {% set place = i + 1 %}
+      {% if leaderboard|length > i %}
+        {% set row = leaderboard[i] %}
+        <div class="podium-block podium-{{ place }} {{ 'podium-me' if row.manager_id == my_manager_id }}">
+          <div class="podium-medal">{{ medals[i] }}</div>
+          <div class="podium-name">{{ row.name }}{% if row.manager_id == my_manager_id %} 👋{% endif %}</div>
+          <div class="podium-count">{{ row.approved_count }} заявок</div>
+          <div class="podium-prize">+{{ podium_prizes[i] }}G</div>
+          <div class="podium-bar"></div>
+        </div>
+      {% else %}
+        <div class="podium-block podium-{{ place }} podium-empty">
+          <div class="podium-medal">{{ medals[i] }}</div>
+          <div class="podium-name muted">Место свободно</div>
+          <div class="podium-count">будь первым</div>
+          <div class="podium-prize">+{{ podium_prizes[i] }}G</div>
+          <div class="podium-bar"></div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="prize-tier-label">4–9 места · по 200G</div>
+  <div class="prize-tier-grid prize-tier-grid-6">
+    {% for i in range(3, 9) %}
+      {% set place = i + 1 %}
+      {% if leaderboard|length > i %}
+        {% set row = leaderboard[i] %}
+        <div class="prize-tile {{ 'prize-tile-me' if row.manager_id == my_manager_id }}">
+          <div class="prize-tile-rank">#{{ place }}</div>
+          <div class="prize-tile-name">{{ row.name }}{% if row.manager_id == my_manager_id %} <span class="muted">(ты)</span>{% endif %}</div>
+          <div class="prize-tile-count">{{ row.approved_count }} заявок</div>
+          <div class="prize-tile-prize">+200G</div>
+        </div>
+      {% else %}
+        <div class="prize-tile prize-tile-empty">
+          <div class="prize-tile-rank">#{{ place }}</div>
+          <div class="prize-tile-name muted">свободно</div>
+          <div class="prize-tile-count">—</div>
+          <div class="prize-tile-prize">+200G</div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if leaderboard|length > 9 %}
+  <div class="contest-rest-label">10 место и ниже</div>
+  <div class="contest-rest-list">
+    {% for row in leaderboard[9:50] %}
+      <div class="contest-rest-row {{ 'contest-rest-row-me' if row.manager_id == my_manager_id }}">
+        <span class="contest-rest-place">#{{ loop.index + 9 }}</span>
+        <span class="contest-rest-name">{{ row.name }}{% if row.manager_id == my_manager_id %} <span class="muted">(ты)</span>{% endif %}</span>
+        <span class="contest-rest-count">{{ row.approved_count }} заявок</span>
       </div>
     {% endfor %}
   </div>
   {% else %}
-    <p class="muted" style="text-align:center;">Конкурс только начался — будь первым в топе!</p>
+  <div class="contest-rest-empty-banner">
+    <span class="contest-rest-empty-icon">🎯</span>
+    <span>Места с 10 по 50 пока свободны — приведи лидов и займи одно из них!</span>
+  </div>
   {% endif %}
 
-  <div class="contest-leaderboard">
-    {% for row in leaderboard[3:] %}
-      {% set place = loop.index + 3 %}
-      <div class="contest-row contest-place-other {{ 'contest-row-me' if row.manager_id == my_manager_id }}">
-        <div class="contest-place-badge">#{{ place }}</div>
-        <div class="contest-name">{{ row.name }}{% if row.manager_id == my_manager_id %} <span class="muted">(ты)</span>{% endif %}</div>
-        <div class="contest-count">{{ row.approved_count }} заявок</div>
-        {% if place <= 9 %}<div class="contest-prize-preview">приз: 100G</div>{% endif %}
-      </div>
-    {% endfor %}
+  {% if is_admin %}
+  <form method="post" action="{{ url_for('contest.finish') }}" style="margin:20px auto; text-align:center; max-width:720px;" onsubmit="return confirm('Подвести итоги и начислить призы?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-gold" type="submit">🏁 Подвести итоги и начислить призы</button>
+  </form>
+  {% endif %}
+
+  <div class="contest-rules-card">
+    <div class="contest-rules-title">📜 Условия конкурса</div>
+    <ul class="contest-rules-list">
+      <li>Учитываются заявки, <b>одобренные администратором</b> в период с начала до конца конкурса</li>
+      <li>Место определяется по количеству одобренных заявок — чем больше, тем выше место</li>
+      <li>При равном количестве заявок выше тот, кто набрал их раньше</li>
+      <li>Призы начисляются автоматически на баланс после официального подведения итогов администратором</li>
+    </ul>
+    <div class="contest-rules-prizes">
+      <div class="prize-chip prize-chip-gold">🥇 1 место — 1000G</div>
+      <div class="prize-chip prize-chip-silver">🥈 2 место — 600G</div>
+      <div class="prize-chip prize-chip-bronze">🥉 3 место — 400G</div>
+      <div class="prize-chip">4–9 места — по 200G</div>
+    </div>
   </div>
 
 {% elif phase == 'awaiting_finish' %}
@@ -116,32 +216,86 @@
     </div>
   </div>
 
-  <p class="muted" style="text-align:center; margin:14px 0 22px;">Предварительная таблица (может измениться до официального подведения итогов):</p>
+  <p class="muted" style="text-align:center; margin:14px 0 10px;">Предварительная таблица (может измениться до официального подведения итогов):</p>
+  <div class="contest-pool-line">💰 Призовой фонд: <b>{{ "%.0f"|format(total_prize_pool) }}G</b></div>
 
+  {% set medals = ['🥇', '🥈', '🥉'] %}
+  {% set podium_prizes = [1000, 600, 400] %}
   <div class="contest-podium">
-    {% for row in leaderboard[:3] %}
-      {% set place = loop.index %}
-      <div class="podium-block podium-{{ place }}">
-        <div class="podium-medal">{% if place==1 %}🥇{% elif place==2 %}🥈{% else %}🥉{% endif %}</div>
-        <div class="podium-name">{{ row.name }}</div>
-        <div class="podium-count">{{ row.approved_count }} заявок</div>
-        <div class="podium-bar"></div>
-      </div>
+    {% for i in range(3) %}
+      {% set place = i + 1 %}
+      {% if leaderboard|length > i %}
+        {% set row = leaderboard[i] %}
+        <div class="podium-block podium-{{ place }}">
+          <div class="podium-medal">{{ medals[i] }}</div>
+          <div class="podium-name">{{ row.name }}</div>
+          <div class="podium-count">{{ row.approved_count }} заявок</div>
+          <div class="podium-prize">+{{ podium_prizes[i] }}G</div>
+          <div class="podium-bar"></div>
+        </div>
+      {% else %}
+        <div class="podium-block podium-{{ place }} podium-empty">
+          <div class="podium-medal">{{ medals[i] }}</div>
+          <div class="podium-name muted">Место свободно</div>
+          <div class="podium-count">—</div>
+          <div class="podium-prize">+{{ podium_prizes[i] }}G</div>
+          <div class="podium-bar"></div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="prize-tier-label">4–9 места · по 200G</div>
+  <div class="prize-tier-grid prize-tier-grid-6">
+    {% for i in range(3, 9) %}
+      {% set place = i + 1 %}
+      {% if leaderboard|length > i %}
+        {% set row = leaderboard[i] %}
+        <div class="prize-tile">
+          <div class="prize-tile-rank">#{{ place }}</div>
+          <div class="prize-tile-name">{{ row.name }}</div>
+          <div class="prize-tile-count">{{ row.approved_count }} заявок</div>
+          <div class="prize-tile-prize">+200G</div>
+        </div>
+      {% else %}
+        <div class="prize-tile prize-tile-empty">
+          <div class="prize-tile-rank">#{{ place }}</div>
+          <div class="prize-tile-name muted">свободно</div>
+          <div class="prize-tile-count">—</div>
+          <div class="prize-tile-prize">+200G</div>
+        </div>
+      {% endif %}
     {% endfor %}
   </div>
 
   {% if is_admin %}
-  <form method="post" action="{{ url_for('contest.finish') }}" style="margin-top:20px; text-align:center;" onsubmit="return confirm('Подвести итоги и начислить призы?')">
+  <form method="post" action="{{ url_for('contest.finish') }}" style="margin:20px auto; text-align:center; max-width:720px;" onsubmit="return confirm('Подвести итоги и начислить призы?')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-gold" type="submit">🏁 Подвести итоги и начислить призы</button>
   </form>
   {% endif %}
+
+  <div class="contest-rules-card">
+    <div class="contest-rules-title">📜 Условия конкурса</div>
+    <ul class="contest-rules-list">
+      <li>Учитываются заявки, <b>одобренные администратором</b> в период с начала до конца конкурса</li>
+      <li>Место определяется по количеству одобренных заявок — чем больше, тем выше место</li>
+      <li>При равном количестве заявок выше тот, кто набрал их раньше</li>
+      <li>Призы начисляются автоматически на баланс после официального подведения итогов администратором</li>
+    </ul>
+    <div class="contest-rules-prizes">
+      <div class="prize-chip prize-chip-gold">🥇 1 место — 1000G</div>
+      <div class="prize-chip prize-chip-silver">🥈 2 место — 600G</div>
+      <div class="prize-chip prize-chip-bronze">🥉 3 место — 400G</div>
+      <div class="prize-chip">4–9 места — по 200G</div>
+    </div>
+  </div>
 {% endif %}
 
 {% if phase in ['upcoming', 'active'] %}
 <script>
-  const startsAt = new Date("{{ contest.starts_at }}");
-  const endsAt = new Date("{{ contest.ends_at }}");
+  const startsAt = new Date("{{ contest.starts_at }}Z");
+  const endsAt = new Date("{{ contest.ends_at }}Z");
   const phase = "{{ phase }}";
 
   function tick() {
@@ -165,15 +319,16 @@
 <style>
 .contest-hero {
   position: relative; overflow: hidden; text-align: center; padding: 46px 20px;
-  border-radius: 22px; margin-bottom: 8px;
-  background: linear-gradient(135deg, #1a1c2e, #14161d 60%);
-  border: 1px solid rgba(255,215,0,0.35);
+  border-radius: 26px; margin-bottom: 8px;
+  background: var(--panel);
+  border: 4px solid var(--ink, var(--border));
+  box-shadow: 8px 8px 0 var(--candy-orange, #FF8A3D);
 }
-.contest-hero-finished { border-color: rgba(62,207,142,0.4); }
+.contest-hero-finished { box-shadow: 8px 8px 0 #7ED957; }
 .contest-hero-glow {
   position: absolute; inset: -40%; z-index: 0;
-  background: radial-gradient(circle at 30% 20%, rgba(255,215,0,0.20), transparent 55%),
-              radial-gradient(circle at 75% 75%, rgba(108,140,255,0.18), transparent 55%);
+  background: radial-gradient(circle at 30% 20%, rgba(255,200,87,0.20), transparent 55%),
+              radial-gradient(circle at 75% 75%, rgba(46,197,255,0.16), transparent 55%);
   animation: contestGlow 8s ease-in-out infinite alternate;
 }
 @keyframes contestGlow {
@@ -181,56 +336,123 @@
   100% { transform: translate(2%, 2%) scale(1.08); }
 }
 .contest-hero-content { position: relative; z-index: 1; }
-.contest-trophy { font-size: 48px; margin-bottom: 6px; filter: drop-shadow(0 0 18px rgba(255,215,0,0.5)); }
+.contest-trophy { font-size: 48px; margin-bottom: 6px; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.15)); }
 .contest-hero h1 { margin: 0 0 14px; font-size: 24px; }
 .contest-timer {
-  font-size: 46px; font-weight: 800; letter-spacing: 2px; color: #FFD700;
-  font-variant-numeric: tabular-nums; text-shadow: 0 0 24px rgba(255,215,0,0.45);
-  margin-bottom: 4px;
+  font-size: 46px; font-weight: 800; letter-spacing: 2px; color: var(--candy-orange, #FF8A3D);
+  font-variant-numeric: tabular-nums; text-shadow: 3px 3px 0 var(--ink, #2B2250);
+  margin-bottom: 4px; font-family: 'Fredoka', sans-serif;
 }
-.contest-timer-label { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+.contest-timer-label { color: var(--muted); font-size: 13px; margin-bottom: 18px; font-weight: 700; }
 .contest-prizes-strip { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
 .contest-prizes-strip span {
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-  padding: 6px 12px; border-radius: 20px; color: #e8e9ee;
+  background: var(--panel2, #FFF6E8); border: 2px solid var(--border);
+  padding: 6px 12px; border-radius: 20px; color: var(--text); font-weight: 700;
 }
 
 .contest-upcoming-card {
   display: flex; gap: 16px; align-items: flex-start; margin-top: 20px;
-  background: #171a21; border: 1px dashed var(--border); border-radius: 14px; padding: 18px 20px;
+  background: var(--panel2, #FFF6E8); border: 2.5px dashed var(--ink, var(--border)); border-radius: 18px; padding: 18px 20px;
 }
 .contest-upcoming-icon { font-size: 26px; }
-.contest-upcoming-title { font-weight: 700; }
+.contest-upcoming-title { font-family: 'Fredoka', sans-serif; font-weight: 700; }
 
-.contest-podium { display: flex; align-items: flex-end; justify-content: center; gap: 14px; margin: 28px 0 20px; flex-wrap: wrap; }
-.podium-block { width: 150px; text-align: center; padding: 16px 10px 0; background: #171a21; border: 1px solid #262b36; border-radius: 14px 14px 0 0; position: relative; }
+.contest-podium { display: flex; align-items: flex-end; justify-content: center; gap: 14px; margin: 28px 0 24px; flex-wrap: wrap; position: relative; padding-bottom: 8px; }
+.contest-podium::after {
+  content: ''; position: absolute; left: 8%; right: 8%; bottom: 0; height: 6px;
+  background: linear-gradient(90deg, transparent, #FFE8B0, transparent); border-radius: 6px;
+}
+.podium-block { width: 150px; text-align: center; padding: 16px 10px 0; background: var(--panel); border: 3px solid var(--ink, var(--border)); border-radius: 16px 16px 0 0; position: relative; }
 .podium-me { border-color: var(--accent); }
 .podium-medal { font-size: 30px; }
-.podium-name { font-weight: 700; font-size: 13px; margin-top: 6px; min-height: 32px; }
-.podium-count { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
-.podium-prize { color: var(--gold); font-weight: 800; font-size: 15px; margin-top: 6px; }
+.podium-name { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 13px; margin-top: 6px; min-height: 32px; }
+.podium-count { color: var(--muted); font-size: 11.5px; margin-top: 2px; font-weight: 700; }
+.podium-prize { color: var(--candy-orange, var(--gold)); font-weight: 800; font-size: 15px; margin-top: 6px; font-family: 'Fredoka', sans-serif; }
 .podium-bar { border-radius: 8px 8px 0 0; margin-top: 12px; }
 .podium-1 { order: 2; padding-top: 22px; }
-.podium-1 .podium-bar { height: 90px; background: linear-gradient(180deg, #FFD700, #b8960a); }
-.podium-1 { border-color: #FFD700; box-shadow: 0 0 30px rgba(255,215,0,0.15); }
+.podium-1 .podium-bar { height: 90px; background: linear-gradient(180deg, #FFD93D, #FF8A3D); }
+.podium-1 { border-color: #FFD93D; box-shadow: 6px 6px 0 rgba(255,217,61,0.35); }
 .podium-2 { order: 1; }
-.podium-2 .podium-bar { height: 64px; background: linear-gradient(180deg, #C0C0C0, #888); }
-.podium-2 { border-color: #C0C0C0; }
+.podium-2 .podium-bar { height: 64px; background: linear-gradient(180deg, #E4E4EE, #B0AFC0); }
+.podium-2 { border-color: #B0AFC0; }
 .podium-3 { order: 3; }
-.podium-3 .podium-bar { height: 46px; background: linear-gradient(180deg, #CD7F32, #8a5522); }
-.podium-3 { border-color: #CD7F32; }
+.podium-3 .podium-bar { height: 46px; background: linear-gradient(180deg, #E8B37A, #C9834A); }
+.podium-3 { border-color: #C9834A; }
 
 .contest-leaderboard { display: flex; flex-direction: column; gap: 8px; max-width: 720px; margin: 0 auto; }
-.contest-row { display: flex; align-items: center; gap: 14px; background: #171a21; border: 1px solid #262b36; border-radius: 10px; padding: 12px 16px; }
-.contest-row-me { border-color: var(--accent); background: rgba(108,140,255,0.08); }
-.contest-place-badge { font-size: 14px; color: var(--muted); width: 32px; text-align: center; flex-shrink: 0; font-weight: 700; }
-.contest-name { flex: 1; font-weight: 600; }
-.contest-count { color: var(--muted); font-size: 13px; }
-.contest-prize, .contest-prize-preview { color: var(--gold); font-weight: 700; font-size: 13px; white-space: nowrap; }
+.contest-row { display: flex; align-items: center; gap: 14px; background: var(--panel); border: 2.5px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+.contest-row-me { border-color: var(--accent); background: rgba(46,197,255,0.08); }
+.contest-place-badge { font-size: 14px; color: var(--muted); width: 32px; text-align: center; flex-shrink: 0; font-weight: 800; }
+.contest-name { flex: 1; font-weight: 700; }
+.contest-count { color: var(--muted); font-size: 13px; font-weight: 700; }
+.contest-prize, .contest-prize-preview { color: var(--candy-orange, var(--gold)); font-weight: 800; font-size: 13px; white-space: nowrap; }
 
 @media (max-width: 640px) {
   .contest-timer { font-size: 32px; }
   .podium-block { width: 105px; }
+}
+
+.contest-leaderboard-ranked .contest-row { border-left: 4px solid var(--candy-purple, var(--accent)); }
+.contest-place-badge-ranked { color: var(--text); font-weight: 800; }
+
+.contest-rest-details { margin-top: 14px; max-width: 720px; margin-left: auto; margin-right: auto; }
+.contest-rest-details summary { cursor: pointer; color: var(--accent); font-size: 13px; padding: 6px 0; font-weight: 700; }
+
+.contest-rules-card {
+  max-width: 720px; margin: 24px auto 0; background: var(--panel); border: 3px solid var(--ink, var(--border));
+  border-radius: 20px; padding: 22px;
+  box-shadow: 5px 5px 0 rgba(43,34,80,0.1);
+}
+.contest-rules-title { font-family: 'Fredoka', sans-serif; font-weight: 700; margin-bottom: 12px; font-size: 15px; }
+.contest-rules-list { margin: 0 0 14px; padding-left: 20px; font-size: 13px; color: var(--text); line-height: 1.7; font-weight: 600; }
+.contest-rules-list b { color: var(--candy-orange, var(--gold)); }
+.contest-rules-prizes { display: flex; gap: 8px; flex-wrap: wrap; }
+.prize-chip { background: var(--panel2, #FFF6E8); border: 2px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 12px; color: var(--text); font-weight: 700; }
+.prize-chip-gold { border-color: #FFD93D; color: #B8860B; }
+.prize-chip-silver { border-color: #B0AFC0; color: #6E6C7A; }
+.prize-chip-bronze { border-color: #C9834A; color: #8A5522; }
+
+.prize-tile-solo {
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+  max-width: 720px; margin: 0 auto 16px; padding: 16px 22px;
+  background: var(--panel2, #FFF6E8);
+  border: 2.5px solid var(--accent); border-radius: 16px;
+}
+.prize-tile-solo .prize-tile-rank { font-size: 22px; margin-bottom: 0; }
+.prize-tile-solo .prize-tile-info { flex: 1; margin: 0 16px; text-align: left; }
+.prize-tile-solo .prize-tile-name { font-size: 15px; margin-bottom: 2px; font-weight: 700; }
+.prize-tile-solo .prize-tile-prize { font-size: 20px; }
+.prize-tile-me { border-color: var(--accent) !important; background: rgba(46,197,255,0.1) !important; }
+
+.prize-tier-label { text-align: center; color: var(--muted); font-size: 11.5px; margin: 4px 0 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
+
+.prize-tier-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 720px; margin: 0 auto 20px; }
+.prize-tile { display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--panel); border: 2.5px solid var(--border); border-radius: 14px; padding: 12px 6px; }
+.prize-tile-rank { font-size: 15px; font-weight: 800; color: var(--muted); margin-bottom: 4px; }
+.prize-tile-name { font-weight: 700; font-size: 11px; margin-bottom: 2px; line-height: 1.3; }
+.prize-tile-count { font-size: 10px; color: var(--muted); margin-bottom: 6px; font-weight: 700; }
+.prize-tile-prize { color: var(--candy-orange, var(--gold)); font-weight: 800; font-size: 13px; }
+
+@media (max-width: 640px) {
+  .prize-tier-grid { grid-template-columns: repeat(3, 1fr); }
+  .prize-tile-solo { flex-direction: column; text-align: center; gap: 6px; }
+  .prize-tile-solo .prize-tile-info { text-align: center; margin: 4px 0; }
+}
+
+.podium-empty { opacity: 0.5; border-style: dashed !important; }
+.podium-empty .podium-bar { background: #E4E0F0 !important; }
+.prize-tile-empty { opacity: 0.45; border-style: dashed !important; }
+
+.contest-rest-empty-banner {
+  max-width: 720px; margin: 16px auto 0; display: flex; align-items: center; gap: 12px;
+  background: var(--panel2, #FFF6E8); border: 2.5px dashed var(--border); border-radius: 16px; padding: 16px 20px;
+  color: var(--muted); font-size: 13px; font-weight: 700;
+}
+.contest-rest-empty-icon { font-size: 20px; flex-shrink: 0; }
+
+.prize-tier-grid-6 { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 640px) {
+  .prize-tier-grid-6 { grid-template-columns: repeat(3, 1fr); }
 }
 </style>
 {% endblock %}

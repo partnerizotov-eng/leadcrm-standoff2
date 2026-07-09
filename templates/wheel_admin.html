@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Призы колеса{% endblock %}
+{% block content %}
+<h1>⚙️ Настройка колеса призов</h1>
+<a href="{{ url_for('wheel.index') }}" class="back-link" style="display:inline-block; margin-bottom:16px;">← К колесу</a>
+
+<div class="card" style="border-color:var(--gold); margin-bottom:20px;">
+  <h2>➕ Добавить приз</h2>
+  <form method="post" action="{{ url_for('wheel.admin_prizes_create') }}">
+    {{ csrf_field() }}
+    <div class="grid-2">
+      <label class="field"><span>Название (например: 50G)</span><input type="text" name="label" required></label>
+      <label class="field"><span>Сумма голды</span><input type="number" name="amount" step="0.01" min="0.01" required></label>
+      <label class="field"><span>Вес (чем больше — тем чаще выпадает)</span><input type="number" name="weight" value="10" min="1" required></label>
+      <label class="field"><span>Цвет сегмента</span><input type="color" name="color" value="#6C8CFF" style="height:42px;"></label>
+    </div>
+    <button class="btn btn-primary" type="submit">Добавить</button>
+  </form>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <h2>🎡 Текущие призы (сумма весов: {{ total_weight }})</h2>
+  <table>
+    <thead><tr><th>Цвет</th><th>Название</th><th>Сумма</th><th>Вес</th><th>Шанс</th><th>Статус</th><th></th></tr></thead>
+    <tbody>
+      {% for p in prizes %}
+      <tr>
+        <td><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:{{ p.color }};"></span></td>
+        <td>{{ p.label }}</td>
+        <td>{{ "%.2f"|format(p.amount) }}G</td>
+        <td>{{ p.weight }}</td>
+        <td>{{ (p.weight / total_weight * 100)|round(1) }}%</td>
+        <td>{% if p.is_active %}<span class="badge badge-joined_channel">Активен</span>{% else %}<span class="badge badge-declined">Скрыт</span>{% endif %}</td>
+        <td style="display:flex; gap:6px;">
+          <form method="post" action="{{ url_for('wheel.admin_prizes_toggle', prize_id=p.id) }}">
+            {{ csrf_field() }}
+            <button class="btn btn-soft btn-sm" type="submit">{{ 'Скрыть' if p.is_active else 'Включить' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('wheel.admin_prizes_delete', prize_id=p.id) }}" onsubmit="return confirm('Удалить приз?')">
+            {{ csrf_field() }}
+            <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>🎁 Выдать бонусное вращение вручную</h2>
+  <form method="post" action="{{ url_for('wheel.admin_grant_spin') }}" class="row-form">
+    {{ csrf_field() }}
+    <select name="manager_id" required style="flex:1;">
+      {% for m in managers %}
+      <option value="{{ m.id }}">{{ m.name }} (сейчас доступно: {{ m.wheel_spins_available }})</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-gold btn-auto" type="submit">Выдать вращение</button>
+  </form>
+</div>
+{% endblock %}

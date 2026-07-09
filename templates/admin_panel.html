@@ -18,6 +18,12 @@
   <div class="admin-quick-nav">
     <a href="{{ url_for('admin.top_managers') }}" class="quick-nav-pill">🏆 Топ менеджеров</a>
     <a href="{{ url_for('admin.messaging') }}" class="quick-nav-pill">📢 Массовая рассылка</a>
+    <a href="{{ url_for('managers.index') }}" class="quick-nav-pill">👥 Менеджеры (полный список)</a>
+    <a href="{{ url_for('chat.index') }}" class="quick-nav-pill">💬 Модерация чата</a>
+    <a href="{{ url_for('contest.index') }}" class="quick-nav-pill">🏆 Конкурс</a>
+    <a href="{{ url_for('wheel.admin_prizes') }}" class="quick-nav-pill">🎡 Призы колеса</a>
+    <a href="{{ url_for('advent_calendar.admin_index') }}" class="quick-nav-pill">🗓️ Календарь событий</a>
+    <a href="{{ url_for('db_export.backups_list') }}" class="quick-nav-pill">💾 Бэкапы</a>
   </div>
 
   <div class="card">

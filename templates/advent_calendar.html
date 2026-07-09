@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Календарь{% endblock %}
+{% block content %}
+
+<div class="cal-hero">
+  <div class="cal-hero-glow"></div>
+  <div class="cal-hero-content">
+    <h1>🗓️ Календарь событий</h1>
+    <p>Открывай ячейки прошедших и сегодняшних дней — там могут быть мероприятия, конкурсы и бонусы</p>
+  </div>
+</div>
+
+<div class="cal-nav">
+  <a href="{{ url_for('advent_calendar.index', year=prev_year, month=prev_month) }}" class="btn btn-soft btn-sm">← Пред.</a>
+  <div class="cal-nav-title">{{ month_name }} {{ year }}</div>
+  <a href="{{ url_for('advent_calendar.index', year=next_year, month=next_month) }}" class="btn btn-soft btn-sm">След. →</a>
+</div>
+
+{% if is_admin %}
+<a href="{{ url_for('advent_calendar.admin_index') }}" class="btn btn-gold" style="margin-bottom:16px; display:inline-block;">⚙️ Управление событиями</a>
+{% endif %}
+
+<div class="cal-grid">
+  {% for d in days %}
+    {% if d.has_event and d.is_past_or_today %}
+      <button type="button" class="cal-cell cal-cell-event {{ 'cal-cell-today' if d.is_today }} {{ 'cal-cell-claimed' if d.claimed }}"
+              data-date="{{ d.date }}" onclick="openCalDay('{{ d.date }}')">
+        <span class="cal-cell-num">{{ d.day }}</span>
+        <span class="cal-cell-icon">{{ d.event.icon }}</span>
+        {% if d.event.reward_amount and not d.claimed %}<span class="cal-cell-badge">🎁</span>{% endif %}
+      </button>
+    {% elif d.has_event and not d.is_past_or_today %}
+      <div class="cal-cell cal-cell-locked">
+        <span class="cal-cell-num">{{ d.day }}</span>
+        <span class="cal-cell-icon">🔒</span>
+      </div>
+    {% else %}
+      <div class="cal-cell cal-cell-empty {{ 'cal-cell-today' if d.is_today }}">
+        <span class="cal-cell-num">{{ d.day }}</span>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<!-- Модалка открытия дня -->
+<div class="cal-modal-overlay" id="cal-modal-overlay" onclick="closeCalModal()">
+  <div class="cal-modal-card" onclick="event.stopPropagation()">
+    <div class="cal-modal-icon" id="cal-modal-icon">🎁</div>
+    <div class="cal-modal-title" id="cal-modal-title">—</div>
+    <div class="cal-modal-desc" id="cal-modal-desc"></div>
+    <div class="cal-modal-reward" id="cal-modal-reward" style="display:none;"></div>
+    <button type="button" class="btn btn-primary" onclick="closeCalModal()">Закрыть</button>
+  </div>
+</div>
+
+<style>
+.cal-hero {
+  position: relative; overflow: hidden; text-align: center; padding: 30px 20px;
+  border-radius: 24px; margin-bottom: 20px;
+  background: var(--panel);
+  border: 3px solid var(--ink, var(--border));
+  box-shadow: 6px 6px 0 rgba(43,34,80,0.14);
+}
+.cal-hero-glow {
+  position: absolute; inset: -40%; z-index: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(46,197,255,0.16), transparent 55%),
+              radial-gradient(circle at 70% 70%, rgba(255,200,87,0.18), transparent 55%);
+  animation: calGlow 9s ease-in-out infinite alternate;
+}
+@keyframes calGlow { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }
+.cal-hero-content { position: relative; z-index: 1; }
+.cal-hero h1 { margin: 0 0 6px; font-size: 22px; }
+.cal-hero p { color: var(--muted); margin: 0; font-size: 13px; font-weight: 700; }
+
+.cal-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; }
+.cal-nav-title { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 16px; min-width: 160px; text-align: center; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; max-width: 640px; margin: 0 auto; }
+.cal-cell {
+  aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; position: relative; border: 2.5px solid var(--border); background: var(--panel2, #FFF6E8); font-family: inherit;
+  transition: transform 0.15s ease;
+}
+.cal-cell-num { font-size: 11px; color: var(--muted); position: absolute; top: 4px; left: 6px; font-weight: 800; }
+.cal-cell-icon { font-size: 20px; }
+.cal-cell-empty { opacity: 0.45; }
+.cal-cell-today { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,197,255,0.25); }
+.cal-cell-locked { opacity: 0.5; }
+.cal-cell-event { cursor: pointer; border-color: var(--candy-orange, var(--gold)); background: #FFF3C4; }
+.cal-cell-event:hover { transform: translateY(-3px) scale(1.03); }
+.cal-cell-claimed { border-color: var(--border); background: var(--panel2, #FFF6E8); opacity: 0.75; }
+.cal-cell-badge { position: absolute; top: 3px; right: 4px; font-size: 11px; }
+
+.cal-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 3000; background: rgba(43,34,80,0.55);
+  align-items: center; justify-content: center; padding: 20px;
+}
+.cal-modal-overlay.open { display: flex; }
+.cal-modal-card {
+  background: var(--panel); border: 4px solid var(--candy-orange, var(--gold)); border-radius: 24px; padding: 32px 36px;
+  text-align: center; max-width: 340px; animation: calModalPop 0.3s ease-out;
+  box-shadow: 8px 8px 0 rgba(43,34,80,0.2);
+}
+@keyframes calModalPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.cal-modal-icon { font-size: 44px; margin-bottom: 10px; }
+.cal-modal-title { font-family: 'Fredoka', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.cal-modal-desc { font-size: 13.5px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; font-weight: 700; }
+.cal-modal-reward { font-family: 'Fredoka', sans-serif; font-size: 22px; font-weight: 800; color: var(--candy-orange, var(--gold)); margin-bottom: 16px; }
+
+@media (max-width: 640px) { .cal-grid { gap: 6px; } .cal-cell-icon { font-size: 16px; } }
+</style>
+
+<script>
+async function openCalDay(dateStr) {
+  try {
+    const res = await fetch(`/calendar/day/${dateStr}/open`, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': "{{ csrf_token() }}" },
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Не удалось открыть день'); return; }
+
+    document.getElementById('cal-modal-icon').textContent = data.icon;
+    document.getElementById('cal-modal-title').textContent = data.title;
+    document.getElementById('cal-modal-desc').textContent = data.description || '';
+
+    const rewardEl = document.getElementById('cal-modal-reward');
+    if (data.reward_granted > 0) {
+      rewardEl.textContent = `+${data.reward_granted}G получено!`;
+      rewardEl.style.display = 'block';
+    } else if (data.already_claimed) {
+      rewardEl.textContent = '';
+      rewardEl.style.display = 'none';
+    } else {
+      rewardEl.style.display = 'none';
+    }
+
+    document.getElementById('cal-modal-overlay').classList.add('open');
+  } catch (e) {
+    alert('Ошибка сети, попробуй ещё раз');
+  }
+}
+function closeCalModal() {
+  document.getElementById('cal-modal-overlay').classList.remove('open');
+  location.reload();
+}
+</script>
+{% endblock %}

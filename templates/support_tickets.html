@@ -6,16 +6,45 @@
 <div class="tickets-page">
   <h1>🎫 Тикеты поддержки</h1>
 
-  <div class="card new-ticket-card">
-    <div class="card-header">✉️ Новое обращение</div>
-    <div class="card-body">
-      <form method="POST" action="{{ url_for('support_tickets.create') }}">
+  <div class="ticket-create-card">
+    <!-- Шаг 1: выбор темы -->
+    <div id="topic-step">
+      <div class="ticket-create-title">С чем помочь?</div>
+      <div class="topic-grid">
+        <button type="button" class="topic-card" data-subject="💰 Вопрос по выводу голды">
+          <span class="topic-icon">💰</span><span>Вывод голды</span>
+        </button>
+        <button type="button" class="topic-card" data-subject="📸 Вопрос по заявке">
+          <span class="topic-icon">📸</span><span>Заявка на лида</span>
+        </button>
+        <button type="button" class="topic-card" data-subject="👤 Вопрос по лиду">
+          <span class="topic-icon">👤</span><span>Вопрос по лиду</span>
+        </button>
+        <button type="button" class="topic-card" data-subject="🤝 Вопрос по рефералам">
+          <span class="topic-icon">🤝</span><span>Рефералы</span>
+        </button>
+        <button type="button" class="topic-card" data-subject="⚙️ Не работает функция">
+          <span class="topic-icon">⚙️</span><span>Не работает / баг</span>
+        </button>
+        <button type="button" class="topic-card" id="topic-other-btn">
+          <span class="topic-icon">❓</span><span>Другое</span>
+        </button>
+      </div>
+      <div id="topic-other-input" style="display:none; margin-top:12px;">
+        <input type="text" id="other-subject-text" placeholder="Коротко опиши тему обращения" maxlength="80">
+        <button type="button" class="btn btn-primary btn-sm" id="topic-other-confirm" style="margin-top:8px;">Продолжить</button>
+      </div>
+    </div>
+
+    <!-- Шаг 2: сообщение (появляется после выбора темы) -->
+    <div id="message-step" style="display:none;">
+      <button type="button" class="ticket-back-btn" id="topic-back-btn">← Сменить тему</button>
+      <div class="ticket-selected-topic" id="selected-topic-display"></div>
+      <form method="post" action="{{ url_for('support_tickets.create') }}">
         {{ csrf_field() }}
-        <label>Тема</label>
-        <input type="text" name="subject" placeholder="Коротко о проблеме" required>
-        <label>Сообщение</label>
-        <textarea name="message" placeholder="Опиши подробнее..." required></textarea>
-        <button type="submit" class="btn-primary btn-auto">Создать обращение</button>
+        <input type="hidden" name="subject" id="subject-hidden-input">
+        <textarea name="message" id="ticket-message-textarea" placeholder="Опиши подробнее, что случилось..." required rows="4"></textarea>
+        <button type="submit" class="btn btn-primary" style="margin-top:10px;">Отправить обращение</button>
       </form>
     </div>
   </div>
@@ -47,43 +76,102 @@
 <style>
 .tickets-page h1 { margin-bottom: 20px; }
 
-.new-ticket-card { border-left: 3px solid #6c8cff; margin-bottom: 24px; }
-.btn-auto { width: auto !important; padding: 10px 24px !important; }
-
-.empty-state {
-  text-align: center; padding: 50px 20px; color: #8a90a2;
-  background: #171a21; border-radius: 10px;
+.ticket-create-card {
+  background: linear-gradient(135deg, rgba(108,140,255,0.08), rgba(255,215,0,0.04));
+  border: 1px solid var(--accent); border-radius: 16px; padding: 20px; margin-bottom: 24px;
 }
+.ticket-create-title { font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+
+.topic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.topic-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: #171a21; border: 1px solid #262b36; border-radius: 12px; padding: 14px 8px;
+  cursor: pointer; color: var(--text); font-size: 12px; text-align: center; transition: all 0.15s;
+}
+.topic-card:hover { border-color: var(--accent); background: #1b1f29; transform: translateY(-1px); }
+.topic-icon { font-size: 22px; }
+
+#topic-other-input input { width: 100%; }
+
+.ticket-back-btn {
+  background: none; border: none; color: var(--accent); font-size: 13px; cursor: pointer; padding: 0; margin-bottom: 10px;
+}
+.ticket-selected-topic {
+  display: inline-block; background: #171a21; border: 1px solid var(--accent); border-radius: 20px;
+  padding: 6px 14px; font-size: 13px; font-weight: 600; margin-bottom: 12px;
+}
+#ticket-message-textarea { width: 100%; }
+
+.ticket-row { display: block; text-decoration: none; color: inherit; cursor: pointer; }
+.btn-sm { font-size: 12px; padding: 6px 14px; }
+.empty-state { text-align: center; padding: 50px 20px; color: #8a90a2; background: #171a21; border-radius: 10px; }
 
 .ticket-list { display: flex; flex-direction: column; gap: 10px; }
-
 .ticket-row {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 12px; flex-wrap: wrap;
-  background-color: #171a21; border: 1px solid #262b36; border-radius: 10px;
-  padding: 14px 18px; text-decoration: none; color: inherit;
-  transition: border-color 0.2s, transform 0.15s;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  background-color: #171a21; border: 1px solid #262b36; border-radius: 10px; padding: 14px 18px;
+  text-decoration: none; color: inherit; transition: border-color 0.2s, transform 0.15s;
 }
 .ticket-row:hover { border-color: #6c8cff; transform: translateY(-1px); }
-
 .ticket-row-main { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .ticket-id { color: #8a90a2; font-size: 13px; flex-shrink: 0; }
 .ticket-subject { font-weight: 600; font-size: 15px; color: #e8e9ee; }
 .ticket-manager { color: #6c8cff; font-size: 13px; }
-
 .ticket-row-side { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .msg-count { font-size: 13px; color: #8a90a2; }
 .ticket-date { font-size: 12px; color: #8a90a2; }
-
-.status-pill {
-  padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
-}
+.status-pill { padding: 5px 14px; border-radius: 14px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .status-open { background: rgba(108,140,255,0.15); color: #6c8cff; }
 .status-closed { background: rgba(62,207,142,0.15); color: #3ecf8e; }
 
 @media (max-width: 640px) {
+  .topic-grid { grid-template-columns: repeat(2, 1fr); }
   .ticket-row { flex-direction: column; align-items: flex-start; }
   .ticket-row-side { width: 100%; justify-content: space-between; }
 }
 </style>
+
+<script>
+(function() {
+  const topicStep = document.getElementById('topic-step');
+  const messageStep = document.getElementById('message-step');
+  const subjectHidden = document.getElementById('subject-hidden-input');
+  const selectedDisplay = document.getElementById('selected-topic-display');
+  const otherBtn = document.getElementById('topic-other-btn');
+  const otherInput = document.getElementById('topic-other-input');
+  const otherText = document.getElementById('other-subject-text');
+  const otherConfirm = document.getElementById('topic-other-confirm');
+  const backBtn = document.getElementById('topic-back-btn');
+
+  function selectTopic(subject) {
+    subjectHidden.value = subject;
+    selectedDisplay.textContent = subject;
+    topicStep.style.display = 'none';
+    messageStep.style.display = 'block';
+    document.getElementById('ticket-message-textarea').focus();
+  }
+
+  document.querySelectorAll('.topic-card[data-subject]').forEach(function(btn) {
+    btn.addEventListener('click', function() { selectTopic(btn.dataset.subject); });
+  });
+
+  otherBtn.addEventListener('click', function() {
+    otherInput.style.display = 'block';
+    otherText.focus();
+  });
+
+  otherConfirm.addEventListener('click', function() {
+    const val = otherText.value.trim();
+    if (!val) { otherText.focus(); return; }
+    selectTopic('❓ ' + val);
+  });
+
+  backBtn.addEventListener('click', function() {
+    messageStep.style.display = 'none';
+    topicStep.style.display = 'block';
+    otherInput.style.display = 'none';
+    otherText.value = '';
+  });
+})();
+</script>
 {% endblock %}

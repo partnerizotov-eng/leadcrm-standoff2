@@ -91,6 +91,10 @@ def send():
     execute("""INSERT INTO chat_messages (manager_id, message, attachment_path, attachment_type)
                VALUES (?, ?, ?, ?)""", (manager_id, message, attachment_path, attachment_type))
 
+    if message:
+        from .chatbot import process_incoming_message
+        process_incoming_message(manager_id, message)
+
     return redirect(url_for("chat.index"))
 
 

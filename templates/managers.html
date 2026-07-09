@@ -5,26 +5,45 @@
 {% block content %}
 <h1>👥 Менеджеры</h1>
 
-<div class="card">
-  <h2>➕ Добавить менеджера</h2>
-  <form method="post" action="{{ url_for('managers.create') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="grid-2">
-      <label class="field">
-        <span>Имя</span>
-        <input type="text" name="name" required>
-      </label>
-      <label class="field">
-        <span>Логин</span>
-        <input type="text" name="login" required>
-      </label>
-      <label class="field">
-        <span>Пароль</span>
-        <input type="password" name="password" minlength="6" required>
-      </label>
-    </div>
-    <button class="btn btn-primary" type="submit">Добавить</button>
-  </form>
+<div class="grid-2" style="margin-bottom:16px;">
+  <div class="card">
+    <h2>➕ Добавить менеджера</h2>
+    <form method="post" action="{{ url_for('managers.create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="grid-2">
+        <label class="field">
+          <span>Имя</span>
+          <input type="text" name="name" required>
+        </label>
+        <label class="field">
+          <span>Логин</span>
+          <input type="text" name="login" required>
+        </label>
+        <label class="field">
+          <span>Пароль</span>
+          <input type="password" name="password" minlength="6" required>
+        </label>
+      </div>
+      <button class="btn btn-primary" type="submit">Добавить</button>
+    </form>
+  </div>
+
+  <div class="card" style="border-color:var(--gold);">
+    <h2>🧪 Тестовые менеджеры</h2>
+    <p class="muted" style="font-size:13px; margin-bottom:12px;">
+      Создаст 20 пустых тестовых аккаунтов со случайными 8-значными паролями и сразу скачает
+      файл <code>test_managers_credentials.txt</code> в формате <b>login:password</b>.
+      Каждый тестовый менеджер сам пройдёт анкету при первом входе, как обычный новый пользователь.
+    </p>
+    <form method="post" action="{{ url_for('managers.create_test_batch') }}"
+          onsubmit="return confirm('Создать 20 тестовых менеджеров и скачать файл с паролями?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-gold" type="submit">🧪 Создать 20 тестовых менеджеров</button>
+    </form>
+    <a href="{{ url_for('managers.export_txt') }}" class="btn btn-soft btn-sm" style="margin-top:10px; display:inline-block;">
+      📄 Скачать список всех логинов (.txt)
+    </a>
+  </div>
 </div>
 
 <div class="card">
@@ -46,12 +65,17 @@
         <td>{{ m.login }}</td>
         <td>{{ '✅ Активен' if m.is_active else '❌ Отключен' }}</td>
         <td><span class="balance-pill">{{ "%.2f"|format(m.balance) }}G</span></td>
-        <td>
+        <td style="display:flex; gap:6px; flex-wrap:wrap;">
           <form method="post" action="{{ url_for('managers.toggle', manager_id=m.id) }}" class="inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-soft btn-sm" type="submit">
               {{ 'Отключить' if m.is_active else 'Включить' }}
             </button>
+          </form>
+          <form method="post" action="{{ url_for('managers.delete', manager_id=m.id) }}" class="inline"
+                onsubmit="return confirm('Удалить менеджера {{ m.name }}? Все его лиды останутся в системе нетронутыми.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger btn-sm" type="submit">🗑️ Удалить</button>
           </form>
         </td>
       </tr>

@@ -6,7 +6,7 @@ import string
 
 from flask import Blueprint, render_template, request, redirect, flash, session, url_for
 from .security import login_required, hash_password, verify_password
-from .db import query_one, execute
+from .db import query_one, execute, query_all
 
 bp = Blueprint("profile", __name__, url_prefix="/profile")
 
@@ -129,4 +129,17 @@ def settings():
 
         manager = query_one("SELECT * FROM managers WHERE id=?", (manager_id,))
 
-    return render_template("profile_settings.html", manager=manager)
+    achievements_count = query_one(
+        "SELECT COUNT(*) c FROM manager_achievements WHERE manager_id=?", (manager_id,))["c"]
+    referrals_active = query_one(
+        "SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND status='active'", (manager_id,))["c"]
+    puzzle_owned = query_one(
+        "SELECT COUNT(*) c FROM puzzle_pieces WHERE manager_id=?", (manager_id,))["c"]
+    puzzles_completed = query_one(
+        "SELECT COUNT(*) c FROM puzzle_completions WHERE manager_id=?", (manager_id,))["c"]
+
+    return render_template("profile_settings.html", manager=manager,
+                          achievements_count=achievements_count,
+                          referrals_active=referrals_active,
+                          puzzle_owned=puzzle_owned,
+                          puzzles_completed=puzzles_completed)

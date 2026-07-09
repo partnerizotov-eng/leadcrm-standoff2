@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Колесо призов{% endblock %}
+{% block content %}
+
+<div class="wheel-hero">
+  <div class="wheel-hero-glow"></div>
+  <div class="wheel-hero-content">
+    <h1>🎡 Колесо призов</h1>
+    <p>Одно вращение за каждые <b>{{ approvals_per_spin }}</b> одобренные заявки</p>
+  </div>
+</div>
+
+<div class="wheel-layout">
+  <div class="wheel-stage">
+    <div class="wheel-pointer">▼</div>
+    <div class="wheel-face-wrap">
+      <canvas id="wheel-canvas" width="340" height="340"></canvas>
+    </div>
+
+    <div class="wheel-controls">
+      <div class="wheel-spins-count">
+        Доступно вращений: <span id="spins-counter">{{ spins_available }}</span>
+      </div>
+      <button type="button" id="spin-btn" class="btn btn-gold wheel-spin-btn" {{ 'disabled' if spins_available <= 0 }}>
+        🎡 Крутить колесо
+      </button>
+      {% if spins_available <= 0 %}
+      <div class="wheel-progress-hint">
+        Одобрено заявок с последнего вращения: {{ progress_in_cycle }} / {{ approvals_per_spin }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="wheel-side">
+    <div class="wheel-prizes-card">
+      <div class="wheel-prizes-title">🎁 Возможные призы</div>
+      {% for p in prizes %}
+        <div class="wheel-prize-row">
+          <span class="wheel-prize-dot" style="background:{{ p.color }};"></span>
+          <span class="wheel-prize-label">{{ p.label }}</span>
+          <span class="wheel-prize-chance">{{ (p.weight / total_weight * 100)|round(1) }}%</span>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="wheel-history-card">
+      <div class="wheel-prizes-title">📜 Твои последние вращения</div>
+      {% if history %}
+        {% for h in history %}
+          <div class="wheel-history-row">
+            <span>{{ h.label }}</span>
+            <span class="muted" style="font-size:11px;">{{ h.created_at }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted" style="font-size:12.5px;">Пока не крутил — впереди много призов!</p>
+      {% endif %}
+    </div>
+
+    {% if is_admin %}
+    <a href="{{ url_for('wheel.admin_prizes') }}" class="btn btn-soft" style="width:100%; text-align:center;">⚙️ Настроить призы</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Модалка результата -->
+<div class="wheel-result-overlay" id="wheel-result-overlay">
+  <div class="wheel-result-card">
+    <div class="wheel-result-icon">🎉</div>
+    <div class="wheel-result-title">Поздравляем!</div>
+    <div class="wheel-result-prize" id="wheel-result-prize">—</div>
+    <button type="button" class="btn btn-primary" id="wheel-result-close">Отлично!</button>
+  </div>
+</div>
+
+<style>
+.wheel-hero {
+  position: relative; overflow: hidden; text-align: center; padding: 30px 20px;
+  border-radius: 24px; margin-bottom: 22px;
+  background: var(--panel);
+  border: 3px solid var(--ink, var(--border));
+  box-shadow: 6px 6px 0 rgba(43,34,80,0.14);
+}
+.wheel-hero-glow {
+  position: absolute; inset: -40%; z-index: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(255,200,87,0.20), transparent 55%),
+              radial-gradient(circle at 70% 70%, rgba(46,197,255,0.16), transparent 55%);
+  animation: wheelGlow 9s ease-in-out infinite alternate;
+}
+@keyframes wheelGlow { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+.wheel-hero-content { position: relative; z-index: 1; }
+.wheel-hero h1 { margin: 0 0 6px; font-size: 24px; }
+.wheel-hero p { color: var(--muted); margin: 0; font-weight: 700; }
+.wheel-hero p b { color: var(--candy-orange, var(--gold)); }
+
+.wheel-layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.wheel-stage { flex: 1; min-width: 300px; display: flex; flex-direction: column; align-items: center; }
+
+.wheel-pointer { font-size: 26px; color: var(--candy-orange, var(--gold)); margin-bottom: -6px; z-index: 2; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
+.wheel-face-wrap {
+  width: 340px; height: 340px; border-radius: 50%; padding: 10px;
+  background: linear-gradient(135deg, #FFD93D, #FF8A3D);
+  border: 5px solid var(--ink, var(--border));
+  box-shadow: 8px 8px 0 rgba(43,34,80,0.16);
+}
+#wheel-canvas { width: 100%; height: 100%; border-radius: 50%; display: block; transition: transform 4.5s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+
+.wheel-controls { margin-top: 20px; text-align: center; }
+.wheel-spins-count { font-size: 14px; color: var(--text); margin-bottom: 10px; font-weight: 700; }
+.wheel-spins-count span { color: var(--candy-orange, var(--gold)); font-weight: 900; font-size: 18px; font-family: 'Fredoka', sans-serif; }
+.wheel-spin-btn { font-size: 15px; padding: 12px 32px; }
+.wheel-spin-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wheel-progress-hint { font-size: 12px; color: var(--muted); margin-top: 10px; font-weight: 700; }
+
+.wheel-side { width: 300px; display: flex; flex-direction: column; gap: 16px; }
+.wheel-prizes-card, .wheel-history-card {
+  background: var(--panel); border: 3px solid var(--ink, var(--border)); border-radius: 18px; padding: 16px 18px;
+  box-shadow: 4px 4px 0 rgba(43,34,80,0.1);
+}
+.wheel-prizes-title { font-family: 'Fredoka', sans-serif; font-weight: 700; margin-bottom: 10px; font-size: 14px; }
+.wheel-prize-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; font-weight: 700; }
+.wheel-prize-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid var(--ink, var(--border)); }
+.wheel-prize-label { flex: 1; }
+.wheel-prize-chance { color: var(--muted); font-size: 11.5px; }
+.wheel-history-row { display: flex; justify-content: space-between; padding: 7px 0; border-top: 2px solid #F0EBE0; font-size: 12.5px; font-weight: 700; }
+.wheel-history-row:first-of-type { border-top: none; }
+
+.wheel-result-overlay {
+  display: none; position: fixed; inset: 0; z-index: 3000;
+  background: rgba(43,34,80,0.55); align-items: center; justify-content: center; padding: 20px;
+}
+.wheel-result-overlay.open { display: flex; }
+.wheel-result-card {
+  background: var(--panel); border: 4px solid var(--candy-orange, var(--gold)); border-radius: 24px; padding: 36px 40px;
+  text-align: center; max-width: 320px; animation: wheelResultPop 0.4s ease-out;
+  box-shadow: 8px 8px 0 rgba(43,34,80,0.2);
+}
+@keyframes wheelResultPop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.wheel-result-icon { font-size: 48px; margin-bottom: 8px; }
+.wheel-result-title { font-family: 'Fredoka', sans-serif; font-size: 16px; color: var(--text); margin-bottom: 10px; }
+.wheel-result-prize { font-family: 'Fredoka', sans-serif; font-size: 30px; font-weight: 800; color: var(--candy-orange, var(--gold)); margin-bottom: 20px; }
+
+@media (max-width: 900px) { .wheel-layout { flex-direction: column; align-items: center; } .wheel-side { width: 100%; max-width: 340px; } }
+</style>
+
+<script>
+(function() {
+  const prizes = {{ prizes|tojson }};
+  const canvas = document.getElementById('wheel-canvas');
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const center = size / 2;
+  const radius = size / 2 - 6;
+
+  const totalWeight = prizes.reduce((s, p) => s + p.weight, 0) || 1;
+  let boundaries = [];
+  (function computeBoundaries() {
+    let acc = 0;
+    boundaries = prizes.map(p => {
+      const start = acc / totalWeight * 360;
+      acc += p.weight;
+      const end = acc / totalWeight * 360;
+      return { start, end };
+    });
+  })();
+
+  function drawWheel() {
+    ctx.clearRect(0, 0, size, size);
+    prizes.forEach((p, i) => {
+      const b = boundaries[i];
+      const startRad = (b.start - 90) * Math.PI / 180;
+      const endRad = (b.end - 90) * Math.PI / 180;
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.arc(center, center, radius, startRad, endRad);
+      ctx.closePath();
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      ctx.strokeStyle = '#2B2250';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      const midRad = (startRad + endRad) / 2;
+      ctx.save();
+      ctx.translate(center + Math.cos(midRad) * radius * 0.68, center + Math.sin(midRad) * radius * 0.68);
+      ctx.rotate(midRad + Math.PI / 2);
+      ctx.fillStyle = '#2B2250';
+      ctx.font = 'bold 15px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.label, 0, 0);
+      ctx.restore();
+    });
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#2B2250';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+  drawWheel();
+
+  let currentRotation = 0;
+  const spinBtn = document.getElementById('spin-btn');
+  const spinsCounter = document.getElementById('spins-counter');
+  const overlay = document.getElementById('wheel-result-overlay');
+  const resultPrize = document.getElementById('wheel-result-prize');
+  const closeBtn = document.getElementById('wheel-result-close');
+
+  spinBtn.addEventListener('click', async function() {
+    spinBtn.disabled = true;
+    try {
+      const res = await fetch("{{ url_for('wheel.spin') }}", {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': "{{ csrf_token() }}" },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Не удалось выполнить вращение');
+        spinBtn.disabled = false;
+        return;
+      }
+
+      const b = boundaries[data.prize_index];
+      const jitter = (Math.random() - 0.5) * (b.end - b.start) * 0.6;
+      const targetMid = (b.start + b.end) / 2 + jitter;
+      const extraSpins = 5 + Math.floor(Math.random() * 2);
+      currentRotation += extraSpins * 360 + (360 - targetMid) - (currentRotation % 360);
+
+      canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+      setTimeout(function() {
+        resultPrize.textContent = '+' + data.label;
+        overlay.classList.add('open');
+        spinsCounter.textContent = data.spins_left;
+        if (data.spins_left <= 0) {
+          spinBtn.disabled = true;
+        } else {
+          spinBtn.disabled = false;
+        }
+      }, 4600);
+    } catch (e) {
+      alert('Ошибка сети, попробуй ещё раз');
+      spinBtn.disabled = false;
+    }
+  });
+
+  closeBtn.addEventListener('click', function() {
+    overlay.classList.remove('open');
+    location.reload();
+  });
+})();
+</script>
+{% endblock %}

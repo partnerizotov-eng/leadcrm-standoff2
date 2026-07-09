@@ -39,14 +39,25 @@ def index():
     sql += " ORDER BY s.created_at DESC LIMIT 200"
 
     rows = query_all(sql, tuple(params))
-    
+
+    count_where = "WHERE manager_id=?" if role != "admin" else ""
+    count_params = (manager_id,) if role != "admin" else ()
+    stats = query_one(f"""
+        SELECT COUNT(*) as total,
+               SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending,
+               SUM(CASE WHEN status='approved' THEN 1 ELSE 0 END) as approved,
+               SUM(CASE WHEN status='rejected' THEN 1 ELSE 0 END) as rejected
+        FROM submissions {count_where}
+    """, count_params)
+
     # Для менеджера показываем только его заявки, для админа - все
     return render_template("submissions.html", 
                           submissions=[dict(r) for r in rows],
                           round_slots=ROUND_SLOTS, 
                           status_filter=status_filter,
                           is_admin=(role == "admin"), 
-                          penalty_amount=PENALTY_AMOUNT)
+                          penalty_amount=PENALTY_AMOUNT,
+                          stats=dict(stats))
 
 
 @bp.route("/leads/<int:lead_id>/submit", methods=["POST"])
@@ -152,6 +163,15 @@ def review(sub_id):
         from .referrals import on_submission_approved, apply_referral_override
         on_submission_approved(sub["manager_id"])
         apply_referral_override(sub["manager_id"], APPROVAL_REWARD, "заявка одобрена")
+
+        from .wheel import grant_spin_on_approval
+        grant_spin_on_approval(sub["manager_id"])
+
+        from .achievements import trigger_achievement_check
+        trigger_achievement_check(sub["manager_id"])
+
+        from .puzzle import grant_piece_on_approval
+        grant_piece_on_approval(sub["manager_id"])
 
         msg = f"✅ Заявка одобрена! Начислено {APPROVAL_REWARD}G на ваш баланс."
         if comment:

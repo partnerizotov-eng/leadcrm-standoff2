@@ -32,7 +32,7 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 def panel():
     """Главная страница админ-панели"""
     
-    managers = query_all("SELECT * FROM managers WHERE role = 'manager'")
+    managers = query_all("SELECT * FROM managers WHERE role = 'manager' AND is_deleted = 0")
     balance_logs = get_balance_logs(50)
     player_balance_logs = get_player_balance_logs(50)
     all_leads = query_all("SELECT l.*, m.name as manager_name FROM leads l LEFT JOIN managers m ON l.assigned_manager_id = m.id")

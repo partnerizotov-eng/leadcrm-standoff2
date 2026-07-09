@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Управление календарём{% endblock %}
+{% block content %}
+<h1>⚙️ Управление календарём</h1>
+<a href="{{ url_for('advent_calendar.index') }}" class="back-link" style="display:inline-block; margin-bottom:16px;">← К календарю</a>
+
+<div class="card" style="border-color:var(--gold); margin-bottom:20px;">
+  <h2>➕ Добавить / изменить событие</h2>
+  <p class="muted" style="font-size:12px; margin-bottom:10px;">Если на выбранную дату уже есть событие — оно будет обновлено.</p>
+  <form method="post" action="{{ url_for('advent_calendar.admin_create') }}">
+    {{ csrf_field() }}
+    <div class="grid-2">
+      <label class="field"><span>Дата</span><input type="date" name="event_date" required></label>
+      <label class="field"><span>Иконка (эмодзи)</span><input type="text" name="icon" value="🎁" maxlength="4"></label>
+      <label class="field"><span>Заголовок</span><input type="text" name="title" placeholder="Например: Розыгрыш скинов" required></label>
+      <label class="field"><span>Бонус голды (необязательно)</span><input type="number" name="reward_amount" step="0.01" min="0" placeholder="Оставь пустым, если без бонуса"></label>
+    </div>
+    <label class="field"><span>Описание</span><textarea name="description" rows="3" placeholder="Что происходит в этот день, условия участия и т.д."></textarea></label>
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>📋 Все события</h2>
+  {% if events %}
+  <table>
+    <thead><tr><th>Дата</th><th>Иконка</th><th>Заголовок</th><th>Бонус</th><th></th></tr></thead>
+    <tbody>
+      {% for e in events %}
+      <tr>
+        <td>{{ e.event_date }}</td>
+        <td style="font-size:18px;">{{ e.icon }}</td>
+        <td>{{ e.title }}</td>
+        <td>{% if e.reward_amount %}<span class="balance-pill">{{ "%.2f"|format(e.reward_amount) }}G</span>{% else %}—{% endif %}</td>
+        <td>
+          <form method="post" action="{{ url_for('advent_calendar.admin_delete', event_id=e.id) }}" onsubmit="return confirm('Удалить событие?')">
+            {{ csrf_field() }}
+            <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Событий пока нет.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -134,6 +134,8 @@ def index():
     pagination = Pagination(all_leads, page, per_page)
     scripts = query_all("SELECT id, label FROM scripts WHERE is_active=1 ORDER BY label")
     
+    check_result = session.pop("lead_check_result", None)
+
     return render_template("leads.html", 
                           leads=[dict(r) for r in pagination.current_items],
                           pagination=pagination,
@@ -141,7 +143,46 @@ def index():
                           statuses=STATUSES, 
                           status_labels=STATUS_LABELS, 
                           status_filter=status_filter,
-                          is_admin=(role == "admin"))
+                          is_admin=(role == "admin"),
+                          check_result=check_result)
+
+@bp.route("/leads/check", methods=["POST"])
+@login_required
+def check():
+    """Проверка ссылки VK перед добавлением: показывает, существует ли уже
+    такой лид, и если да — кто именно его ведёт, чтобы менеджер не писал
+    повторно тому, кого уже ведёт другой менеджер."""
+    raw = request.form.get("vk_url", "").strip()
+
+    if not raw:
+        flash("❌ Укажите ссылку на профиль ВК.", "error")
+        return redirect(url_for("leads.index"))
+
+    is_valid, message = VKValidator.is_valid_vk_url(raw, check_exists=False)
+    if not is_valid:
+        flash(f"❌ {message}", "error")
+        return redirect(url_for("leads.index"))
+
+    vk_id = VKValidator.extract_id(raw)
+    if not vk_id:
+        flash("❌ Не удалось распознать VK ID.", "error")
+        return redirect(url_for("leads.index"))
+
+    existing = query_one(
+        "SELECT l.id, l.name, l.status, l.assigned_manager_id, m.name as manager_name "
+        "FROM leads l LEFT JOIN managers m ON m.id = l.assigned_manager_id "
+        "WHERE l.vk_id=?", (vk_id,))
+
+    session["lead_check_result"] = {
+        "vk_id": vk_id,
+        "canonical": f"vk.com/{vk_id}",
+        "exists": bool(existing),
+        "existing_name": existing["name"] if existing else None,
+        "owner_name": existing["manager_name"] if existing else None,
+        "owner_is_me": bool(existing and existing["assigned_manager_id"] == session["manager_id"]),
+        "status_label": STATUS_LABELS.get(existing["status"], existing["status"]) if existing else None,
+    }
+    return redirect(url_for("leads.index"))
 
 
 @bp.route("/leads/add", methods=["POST"])

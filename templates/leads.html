@@ -11,6 +11,62 @@
   📌 <strong>Формат ссылки VK:</strong> vk.com/id123, vk.com/username или просто id123
 </div>
 
+{% if check_result %}
+<div class="card lead-check-card" style="margin:16px 0;">
+  <h2>🔍 Результат проверки</h2>
+  <p style="margin:8px 0;">Ссылка распознана и приведена к стандартному виду:</p>
+  <div class="lead-check-canonical">{{ check_result.canonical }}</div>
+
+  {% if check_result.exists %}
+    {% if check_result.owner_is_me %}
+      <div class="tip" style="margin-top:12px;">
+        ✅ Этот лид уже у тебя: <strong>{{ check_result.existing_name or check_result.vk_id }}</strong>
+        — статус «{{ check_result.status_label }}». Ничего добавлять не нужно.
+      </div>
+    {% else %}
+      <div class="tip-warning" style="margin-top:12px;">
+        ⚠️ Этот лид уже занят другим менеджером: <strong>{{ check_result.existing_name or check_result.vk_id }}</strong>
+        ведёт <b>{{ check_result.owner_name or 'неизвестно кто' }}</b> (статус: {{ check_result.status_label }}).
+        Не пиши ему — это уже чужой лид.
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="tip" style="margin-top:12px;">✅ Лида с такой ссылкой в системе ещё нет — можно смело добавлять.</div>
+    <form method="post" action="{{ url_for('leads.add') }}" style="margin-top:12px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="vk_url" value="{{ check_result.canonical }}">
+      <label class="field">
+        <span>Имя (опционально)</span>
+        <input type="text" name="name" placeholder="Если известно">
+      </label>
+      <label class="field">
+        <span>Группа-источник</span>
+        <input type="text" name="source_group" placeholder="Название группы Standoff 2">
+      </label>
+      <button class="btn btn-primary" type="submit">➕ Добавить этого лида</button>
+    </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card lead-verify-card" style="margin:16px 0;">
+  <h2>🔍 Проверка лида</h2>
+  <p class="muted" style="font-size:12.5px; margin-bottom:10px;">
+    Прежде чем писать лиду — проверь, не ведёт ли его уже другой менеджер. Вставь ссылку в любом виде:
+    vk.com, vk.ru, m.vk.com, с https:// или без, просто id12345 или username.
+  </p>
+  <form method="post" action="{{ url_for('leads.check') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+      <label class="field" style="flex:1; min-width:220px; margin-bottom:0;">
+        <span>Ссылка VK (любой формат)</span>
+        <input type="text" name="vk_url" placeholder="vk.com/id123, durov, https://m.vk.com/username..." required>
+      </label>
+      <button class="btn btn-soft" type="submit" style="margin-bottom:0;">🔍 Проверить</button>
+    </div>
+  </form>
+</div>
+
 <div class="grid-2" style="margin:16px 0;">
   <div class="card">
     <h2>➕ Добавить лида</h2>
@@ -100,7 +156,7 @@
         <td><span class="balance-pill">{{ "%.2f"|format(l.balance) }}G</span></td>
         <td>
           {% if l.game_id %}
-            <code style="background:#0d0f14;padding:2px 6px;border-radius:4px;font-size:12px;">{{ l.game_id[:12] }}...</code>
+            <code style="background:var(--panel2, #FFF6E8);padding:2px 6px;border-radius:4px;font-size:12px;border:1px solid var(--border);">{{ l.game_id[:12] }}...</code>
             {% if l.game_verified %}<br><span class="badge badge-joined_channel" style="font-size:10px;">✅ Верифицирован</span>{% endif %}
             {% if l.game_rank %}<br><span class="muted" style="font-size:10px;">Ранг: {{ l.game_rank }}</span>{% endif %}
           {% else %}
@@ -114,171 +170,184 @@
       {% endfor %}
     </tbody>
   </table>
-
-  <!-- Модальные окна (по одному на лида) -->
-  {% for l in leads %}
-  <div class="lead-modal-overlay" id="modal-overlay-{{ l.id }}" onclick="closeLeadModal({{ l.id }})">
-    <div class="lead-modal-card" onclick="event.stopPropagation()">
-      <div class="lead-modal-header">
-        <h3>⚡ {{ l.name or l.vk_id }}</h3>
-        <button type="button" class="lead-modal-close" onclick="closeLeadModal({{ l.id }})">✕</button>
-      </div>
-
-      <div class="lead-modal-body">
-
-        <!-- Смена статуса -->
-        <div class="lead-modal-section">
-          <div class="lead-modal-section-title">Статус лида</div>
-          <form method="post" action="{{ url_for('leads.update_status', lead_id=l.id) }}" class="inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <select name="status">
-              {% for s in statuses %}
-              <option value="{{ s }}" {{ 'selected' if l.status == s }}>{{ status_labels[s] }}</option>
-              {% endfor %}
-            </select>
-            <button class="btn btn-soft btn-sm" type="submit">Обновить</button>
-          </form>
-        </div>
-
-        <!-- Привязка игрового ID -->
-        {% if not l.game_id %}
-        <div class="lead-modal-section">
-          <div class="lead-modal-section-title">Привязать Game ID</div>
-          <form method="post" action="{{ url_for('game.verify_player', lead_id=l.id) }}" class="inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="text" name="game_id" placeholder="Game ID Standoff 2" style="width:160px;" required>
-            <button class="btn btn-primary btn-sm" type="submit">🔗 Привязать</button>
-          </form>
-        </div>
-        {% endif %}
-
-        <!-- Вывод голды -->
-        {% if l.game_id and l.balance >= 10 %}
-        <div class="lead-modal-section" style="background:rgba(255,215,0,0.05); border-radius:8px; padding:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="color:var(--gold);">🎮 Вывод в Standoff 2</strong>
-            <span class="badge badge-new" style="font-size:10px;">Доступно: {{ "%.2f"|format(l.balance) }}G</span>
-          </div>
-          <form method="post" action="{{ url_for('game.withdraw_gold', lead_id=l.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <div style="flex:1;min-width:120px;">
-                <label class="field" style="margin-bottom:0;font-size:12px;">
-                  <span>Сумма (G)</span>
-                  <input type="number" name="amount" step="0.01" min="10" max="{{ l.balance }}" placeholder="10" required oninput="calculatePrice(this.value, 'price-{{ l.id }}')">
-                </label>
-              </div>
-              <div style="flex:1;min-width:120px;">
-                <label class="field" style="margin-bottom:0;font-size:12px;">
-                  <span>Цена (G)</span>
-                  <input type="text" id="price-{{ l.id }}" readonly style="width:100%;color:var(--gold);font-weight:bold;background:rgba(255,215,0,0.1);" placeholder="Сумма × 1.2">
-                </label>
-              </div>
-              <button class="btn btn-gold btn-sm" type="submit" style="margin-top:4px;">🎮 Вывести</button>
-            </div>
-          </form>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px;">
-            💡 Выставьте скин за рассчитанную цену (сумма + 20%)
-          </div>
-        </div>
-        {% endif %}
-
-        <!-- Заявка на проверку -->
-        <div class="lead-modal-section">
-          <div class="lead-modal-section-title">📸 Заявка на проверку</div>
-          <form method="post" action="{{ url_for('submissions.create', lead_id=l.id) }}" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="tip-warning" style="margin-bottom:8px;padding:6px 10px;font-size:12px;">
-              ⚠️ Прикрепите скриншот с ID в комментариях. При ошибке — штраф 1G!
-            </div>
-            <select name="round_slot" style="margin-bottom:8px;">
-              <option value="12:00">12:00</option>
-              <option value="18:00">18:00</option>
-              <option value="00:00">00:00</option>
-            </select>
-            <input type="file" name="screenshot" accept="image/*" required style="margin-bottom:8px;">
-            <button class="btn btn-primary btn-sm" type="submit">📸 Отправить на проверку</button>
-          </form>
-        </div>
-
-        {% if is_admin %}
-        <div class="lead-modal-section">
-          <div class="lead-modal-section-title">Корректировка баланса (админ)</div>
-          <form method="post" action="{{ url_for('leads.adjust_balance', lead_id=l.id) }}" class="inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="number" name="amount" step="0.01" placeholder="+10 / -5" style="width:100px;">
-            <input type="text" name="note" placeholder="причина" style="width:120px;">
-            <button class="btn btn-soft btn-sm" type="submit">Изменить</button>
-          </form>
-        </div>
-        {% endif %}
-
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-
-  <script>
-  function calculatePrice(amount, priceId) {
-      const val = parseFloat(amount) || 0;
-      const price = val * 1.2;
-      document.getElementById(priceId).value = price.toFixed(2) + ' G';
-  }
-
-  function openLeadModal(id) {
-    document.getElementById('modal-overlay-' + id).classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeLeadModal(id) {
-    document.getElementById('modal-overlay-' + id).classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      document.querySelectorAll('.lead-modal-overlay.open').forEach(el => {
-        el.classList.remove('open');
-      });
-      document.body.style.overflow = '';
-    }
-  });
-  </script>
-
-  <style>
-  .lead-modal-overlay {
-    display: none; position: fixed; inset: 0; z-index: 1000;
-    background: rgba(0,0,0,0.65); backdrop-filter: blur(2px);
-    align-items: center; justify-content: center; padding: 20px;
-  }
-  .lead-modal-overlay.open { display: flex; }
-  .lead-modal-card {
-    background: #171a21; border: 1px solid #262b36; border-radius: 14px;
-    width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .lead-modal-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 16px 20px; border-bottom: 1px solid #262b36; position: sticky; top: 0;
-    background: #171a21; z-index: 1;
-  }
-  .lead-modal-header h3 { margin: 0; font-size: 16px; }
-  .lead-modal-close {
-    background: #1b1f29; border: 1px solid #262b36; color: #e8e9ee;
-    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 14px;
-  }
-  .lead-modal-close:hover { border-color: var(--accent); }
-  .lead-modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
-  .lead-modal-section { border-top: 1px solid #20242e; padding-top: 14px; }
-  .lead-modal-section:first-child { border-top: none; padding-top: 0; }
-  .lead-modal-section-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
-
-  @media (max-width: 640px) {
-    .lead-modal-overlay { padding: 0; align-items: flex-end; }
-    .lead-modal-card { max-width: 100%; max-height: 90vh; border-radius: 16px 16px 0 0; }
-  }
-  </style>
-
   {% else %}
   <p class="muted">Пока нет лидов. Добавьте первого!</p>
   {% endif %}
 </div>
+
+{% if leads %}
+<!-- Модальные окна вынесены ЗА пределы .card намеренно: у .card в летней
+     теме есть анимация появления (cardRise), которая заканчивается на
+     transform: translateY(0). По спецификации CSS любой transform, отличный
+     от none — включая нулевой — создаёт новый containing block для
+     потомков с position:fixed. Это ломало окно на весь экран, сжимая его
+     до размеров карточки. Вынос за пределы .card полностью решает проблему. -->
+{% for l in leads %}
+<div class="lead-modal-overlay" id="modal-overlay-{{ l.id }}" onclick="closeLeadModal({{ l.id }})">
+  <div class="lead-modal-card" onclick="event.stopPropagation()">
+    <div class="lead-modal-header">
+      <h3>⚡ {{ l.name or l.vk_id }}</h3>
+      <button type="button" class="lead-modal-close" onclick="closeLeadModal({{ l.id }})">✕</button>
+    </div>
+
+    <div class="lead-modal-body">
+
+      <!-- Смена статуса -->
+      <div class="lead-modal-section">
+        <div class="lead-modal-section-title">Статус лида</div>
+        <form method="post" action="{{ url_for('leads.update_status', lead_id=l.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="status">
+            {% for s in statuses %}
+            <option value="{{ s }}" {{ 'selected' if l.status == s }}>{{ status_labels[s] }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-soft btn-sm" type="submit">Обновить</button>
+        </form>
+      </div>
+
+      <!-- Привязка игрового ID -->
+      {% if not l.game_id %}
+      <div class="lead-modal-section">
+        <div class="lead-modal-section-title">Привязать Game ID</div>
+        <form method="post" action="{{ url_for('game.verify_player', lead_id=l.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="game_id" placeholder="Game ID Standoff 2" style="width:160px;" required>
+          <button class="btn btn-primary btn-sm" type="submit">🔗 Привязать</button>
+        </form>
+      </div>
+      {% endif %}
+
+      <!-- Вывод голды -->
+      {% if l.game_id and l.balance >= 10 %}
+      <div class="lead-modal-section" style="background:#FFF6E8; border-radius:12px; padding:12px; border:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <strong style="color:var(--candy-orange, var(--gold));">🎮 Вывод в Standoff 2</strong>
+          <span class="badge badge-new" style="font-size:10px;">Доступно: {{ "%.2f"|format(l.balance) }}G</span>
+        </div>
+        <form method="post" action="{{ url_for('game.withdraw_gold', lead_id=l.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <div style="flex:1;min-width:120px;">
+              <label class="field" style="margin-bottom:0;font-size:12px;">
+                <span>Сумма (G)</span>
+                <input type="number" name="amount" step="0.01" min="10" max="{{ l.balance }}" placeholder="10" required oninput="calculatePrice(this.value, 'price-{{ l.id }}')">
+              </label>
+            </div>
+            <div style="flex:1;min-width:120px;">
+              <label class="field" style="margin-bottom:0;font-size:12px;">
+                <span>Цена (G)</span>
+                <input type="text" id="price-{{ l.id }}" readonly style="width:100%;color:var(--candy-orange, var(--gold));font-weight:bold;background:#FFF3C4;" placeholder="Сумма × 1.2">
+              </label>
+            </div>
+            <button class="btn btn-gold btn-sm" type="submit" style="margin-top:4px;">🎮 Вывести</button>
+          </div>
+        </form>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:700;">
+          💡 Выставьте скин за рассчитанную цену (сумма + 20%)
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Заявка на проверку -->
+      <div class="lead-modal-section">
+        <div class="lead-modal-section-title">📸 Заявка на проверку</div>
+        <form method="post" action="{{ url_for('submissions.create', lead_id=l.id) }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="tip-warning" style="margin-bottom:8px;padding:6px 10px;font-size:12px;">
+            ⚠️ Прикрепите скриншот с ID в комментариях. При ошибке — штраф 1G!
+          </div>
+          <select name="round_slot" style="margin-bottom:8px;">
+            <option value="12:00">12:00</option>
+            <option value="18:00">18:00</option>
+            <option value="00:00">00:00</option>
+          </select>
+          <input type="file" name="screenshot" accept="image/*" required style="margin-bottom:8px;">
+          <button class="btn btn-primary btn-sm" type="submit">📸 Отправить на проверку</button>
+        </form>
+      </div>
+
+      {% if is_admin %}
+      <div class="lead-modal-section">
+        <div class="lead-modal-section-title">Корректировка баланса (админ)</div>
+        <form method="post" action="{{ url_for('leads.adjust_balance', lead_id=l.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="number" name="amount" step="0.01" placeholder="+10 / -5" style="width:100px;">
+          <input type="text" name="note" placeholder="причина" style="width:120px;">
+          <button class="btn btn-soft btn-sm" type="submit">Изменить</button>
+        </form>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<script>
+function calculatePrice(amount, priceId) {
+    const val = parseFloat(amount) || 0;
+    const price = val * 1.2;
+    document.getElementById(priceId).value = price.toFixed(2) + ' G';
+}
+
+function openLeadModal(id) {
+  document.getElementById('modal-overlay-' + id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLeadModal(id) {
+  document.getElementById('modal-overlay-' + id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.lead-modal-overlay.open').forEach(el => {
+      el.classList.remove('open');
+    });
+    document.body.style.overflow = '';
+  }
+});
+</script>
+
+<style>
+.lead-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 5000;
+  background: rgba(43,34,80,0.6); backdrop-filter: blur(2px);
+  align-items: center; justify-content: center; padding: 20px;
+}
+.lead-modal-overlay.open { display: flex; }
+.lead-modal-card {
+  background: var(--panel); border: 3px solid var(--ink, var(--border)); border-radius: 20px;
+  width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
+  box-shadow: 8px 8px 0 rgba(43,34,80,0.25);
+}
+.lead-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 3px solid var(--border); position: sticky; top: 0;
+  background: var(--panel); z-index: 1; border-radius: 18px 18px 0 0;
+}
+.lead-modal-header h3 { margin: 0; font-size: 16px; font-family: 'Fredoka', sans-serif; }
+.lead-modal-close {
+  background: var(--panel2, #FFF6E8); border: 2px solid var(--border); color: var(--text);
+  width: 32px; height: 32px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 700;
+}
+.lead-modal-close:hover { border-color: var(--accent); transform: scale(1.05); }
+.lead-modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+.lead-modal-section { border-top: 2px solid #F0EBE0; padding-top: 14px; }
+.lead-modal-section:first-child { border-top: none; padding-top: 0; }
+.lead-modal-section-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; }
+
+@media (max-width: 640px) {
+  .lead-modal-overlay { padding: 0; align-items: flex-end; }
+  .lead-modal-card { max-width: 100%; max-height: 90vh; border-radius: 20px 20px 0 0; }
+}
+.lead-check-card { border-color: var(--accent); background: rgba(46,197,255,0.05); }
+.lead-check-canonical {
+  font-family: monospace; font-size: 15px; color: var(--candy-orange, var(--gold)); background: var(--panel2, #FFF6E8);
+  padding: 8px 12px; border-radius: 10px; display: inline-block; margin-top: 4px; border: 2px solid var(--border);
+  font-weight: 700;
+}
+.lead-verify-card { border-color: var(--accent); }
+</style>
+{% endif %}
 {% endblock %}

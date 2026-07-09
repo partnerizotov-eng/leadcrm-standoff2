@@ -50,7 +50,7 @@ def manager_stats():
              WHERE l.assigned_manager_id = m.id AND bl.reason = 'submission_approved') AS earnings,
           (SELECT COALESCE(SUM(balance), 0) FROM leads WHERE assigned_manager_id=m.id) AS pending_balance
         FROM managers m
-        WHERE m.role = 'manager'
+        WHERE m.role = 'manager' AND m.is_deleted = 0
         ORDER BY earnings DESC
     """, (today, week_ago))
 
@@ -278,3 +278,63 @@ def export_txt():
     return Response(
         buf.getvalue(), mimetype="text/plain",
         headers={"Content-Disposition": "attachment; filename=managers_logins.txt"})
+
+
+@bp.route("/managers/<int:manager_id>/delete", methods=["POST"])
+@admin_required
+def delete(manager_id):
+    """Мягкое удаление менеджера: аккаунт скрывается из списков и не может
+    войти, но физически НЕ удаляется из базы — поэтому все его лиды
+    (leads.assigned_manager_id) остаются нетронутыми и сохраняются."""
+    m = query_one("SELECT * FROM managers WHERE id=? AND role='manager'", (manager_id,))
+    if not m:
+        flash("Менеджер не найден.", "error")
+        return redirect(url_for("managers.index"))
+    if m["is_deleted"]:
+        flash("Этот менеджер уже удалён.", "error")
+        return redirect(url_for("managers.index"))
+
+    leads_count = query_one(
+        "SELECT COUNT(*) c FROM leads WHERE assigned_manager_id=?", (manager_id,))["c"]
+
+    execute("UPDATE managers SET is_deleted=1, is_active=0 WHERE id=?", (manager_id,))
+    log_activity(f"Администратор удалил менеджера {m['name']} ({m['login']}). "
+                f"Сохранено лидов: {leads_count}.")
+    flash(f"✅ Менеджер {m['name']} удалён. {leads_count} его лидов остались в системе нетронутыми.",
+          "success")
+    return redirect(url_for("managers.index"))
+
+
+@bp.route("/managers/create-test-batch", methods=["POST"])
+@admin_required
+def create_test_batch():
+    """Создаёт 20 пустых тестовых менеджеров (test_manager_01..20 или выше,
+    если такие логины уже заняты) со случайными 8-значными паролями.
+    Анкета НЕ считается заполненной — при первом входе каждый тестовый
+    менеджер сам пройдёт обычную регистрацию, как любой новый пользователь."""
+    target_count = 20
+    created = []
+    existing_logins = {r["login"] for r in query_all("SELECT login FROM managers")}
+
+    n = 1
+    while len(created) < target_count and n <= 500:
+        candidate = f"test_manager_{n:02d}"
+        if candidate not in existing_logins:
+            password = _gen_password(8)
+            name = f"Тестовый менеджер {n}"
+            execute("INSERT INTO managers (login, password_hash, name, role, total_earned) "
+                    "VALUES (?, ?, ?, 'manager', 0)",
+                    (candidate, hash_password(password), name))
+            created.append((candidate, password))
+            existing_logins.add(candidate)
+        n += 1
+
+    log_activity(f"Администратор создал {len(created)} тестовых менеджеров.")
+
+    lines = [f"{login}:{password}" for login, password in created]
+    buf = io.BytesIO("\r\n".join(lines).encode("utf-8"))
+    flash(f"✅ Создано {len(created)} тестовых менеджеров. Скачивается файл с логинами и паролями "
+         f"— сохрани его, повторно пароли получить будет нельзя.", "success")
+    return Response(
+        buf.getvalue(), mimetype="text/plain",
+        headers={"Content-Disposition": "attachment; filename=test_managers_credentials.txt"})

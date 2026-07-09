@@ -3,16 +3,59 @@
 {% block title %}Достижения{% endblock %}
 
 {% block content %}
-<h1>🏆 Мои достижения</h1>
+<h1>🏆 Достижения</h1>
 
 <div class="tip">
-  💡 Зарабатывайте достижения за активную работу. 
-  Каждое достижение — это признание ваших успехов!
+  💡 Зарабатывайте личные достижения за активную работу, а глобальные открываются всей командой вместе.
 </div>
 
-<!-- Прогресс -->
+{% if new_global %}
+<div class="flash" style="border-color:var(--accent);">
+  <h3 style="color:var(--accent);">🌍 Команда открыла новое достижение!</h3>
+  {% for ach in new_global %}
+  <div style="padding:8px;background:rgba(108,140,255,0.1);border-radius:8px;margin:4px 0;">
+    {{ ach.icon }} <strong>{{ ach.name }}</strong> — {{ ach.description }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if new_achievements %}
+<div class="flash" style="border-color:var(--gold);">
+  <h3 style="color:var(--gold);">🎉 Новые личные достижения!</h3>
+  {% for ach in new_achievements %}
+  <div style="padding:8px;background:rgba(255,215,0,0.1);border-radius:8px;margin:4px 0;">
+    {{ ach.icon }} <strong>{{ ach.name }}</strong> — {{ ach.description }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Глобальные достижения команды -->
+<div class="card" style="border-color:var(--accent); margin-bottom:16px;">
+  <h2>🌍 Достижения команды</h2>
+  <p class="muted" style="font-size:12.5px; margin-bottom:12px;">
+    Общие вехи всего проекта — открываются один раз для всех, разблокировано: {{ global_achievements|length }} из {{ all_global_achievements|length }}
+  </p>
+  <div class="grid-3">
+    {% for ach_id, ach in all_global_achievements.items() %}
+    <div class="card" style="{% if ach_id in global_achievements|map(attribute='achievement_id')|list %}border-color:var(--accent);background:rgba(108,140,255,0.05);{% endif %}">
+      <div style="font-size:32px;text-align:center;">{{ ach.icon }}</div>
+      <h3 style="text-align:center;font-size:14px;margin:8px 0;">{{ ach.name }}</h3>
+      <p class="muted" style="text-align:center;font-size:12px;">{{ ach.description }}</p>
+      {% if ach_id in global_achievements|map(attribute='achievement_id')|list %}
+      <div style="text-align:center;"><span class="badge badge-joined_channel">✅ Открыто</span></div>
+      {% else %}
+      <div style="text-align:center;"><span class="badge badge-new">🔒 Закрыто</span></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Прогресс личных -->
 <div class="card" style="border-color: var(--gold);">
-  <h2>📊 Прогресс</h2>
+  <h2>📊 Личный прогресс</h2>
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <span>Открыто: {{ unlocked }} из {{ total }}</span>
     <span>{{ progress }}%</span>
@@ -22,19 +65,7 @@
   </span>
 </div>
 
-<!-- Новые достижения -->
-{% if new_achievements %}
-<div class="flash" style="border-color:var(--gold);">
-  <h3 style="color:var(--gold);">🎉 Новые достижения!</h3>
-  {% for ach in new_achievements %}
-  <div style="padding:8px;background:rgba(255,215,0,0.1);border-radius:8px;margin:4px 0;">
-    {{ ach.icon }} <strong>{{ ach.name }}</strong> — {{ ach.description }}
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-<!-- Все достижения -->
+<!-- Все личные достижения -->
 <div class="grid-3">
   {% for ach_id, ach in all_achievements.items() %}
   <div class="card" style="{% if ach_id in achievements|map(attribute='achievement_id')|list %}border-color:var(--gold);background:rgba(255,215,0,0.05);{% endif %}">

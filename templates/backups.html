@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Бэкапы{% endblock %}
+{% block content %}
+<h1>💾 Бэкапы ключевых данных</h1>
+
+<div class="tip-warning" style="margin:16px 0;">
+  ⚠️ Бэкапы создаются автоматически каждые 6 часов и хранятся на том же диске, что и сама база.
+  Перед каждым <code>git push</code> — обязательно жми «Скачать» на самом свежем файле ниже и сохраняй его себе на компьютер.
+</div>
+
+<form method="post" action="{{ url_for('db_export.backups_create_now') }}" style="margin-bottom:16px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-gold" type="submit">📦 Создать бэкап прямо сейчас</button>
+</form>
+
+<div class="card">
+  {% if backups %}
+  <table>
+    <thead>
+      <tr><th>Файл</th><th>Создан</th><th>Размер</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td><code>{{ b.name }}</code></td>
+        <td>{{ b.created }}</td>
+        <td>{{ b.size_kb }} КБ</td>
+        <td><a href="{{ url_for('db_export.backups_download', filename=b.name) }}" class="btn btn-soft btn-sm">⬇ Скачать</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Бэкапов пока нет — первый создастся автоматически в течение нескольких минут после запуска, либо нажми кнопку выше.</p>
+  {% endif %}
+</div>
+{% endblock %}

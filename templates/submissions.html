@@ -5,72 +5,149 @@
 {% block content %}
 <h1>📸 Заявки на проверку</h1>
 
-<div class="tip-warning">
+<div class="tip-warning" style="margin-bottom:16px;">
   ⚠️ <strong>Внимание!</strong> При отклонении заявки с менеджера списывается <strong>{{ penalty_amount }}G</strong> за ошибку.
 </div>
 
-<div class="tip">
+<div class="sub-stats-row">
+  <div class="sub-stat-card">
+    <div class="sub-stat-value">{{ stats.total or 0 }}</div>
+    <div class="sub-stat-label">Всего</div>
+  </div>
+  <div class="sub-stat-card sub-stat-amber">
+    <div class="sub-stat-value">{{ stats.pending or 0 }}</div>
+    <div class="sub-stat-label">На проверке</div>
+  </div>
+  <div class="sub-stat-card sub-stat-green">
+    <div class="sub-stat-value">{{ stats.approved or 0 }}</div>
+    <div class="sub-stat-label">Одобрено</div>
+  </div>
+  <div class="sub-stat-card sub-stat-red">
+    <div class="sub-stat-value">{{ stats.rejected or 0 }}</div>
+    <div class="sub-stat-label">Отклонено</div>
+  </div>
+</div>
+
+<div class="sub-filter-row">
+  <a href="{{ url_for('submissions.index') }}" class="sub-filter-pill {{ 'active' if not status_filter }}">Все</a>
+  <a href="{{ url_for('submissions.index', status='pending') }}" class="sub-filter-pill {{ 'active' if status_filter=='pending' }}">⏳ На проверке</a>
+  <a href="{{ url_for('submissions.index', status='approved') }}" class="sub-filter-pill {{ 'active' if status_filter=='approved' }}">✅ Одобрены</a>
+  <a href="{{ url_for('submissions.index', status='rejected') }}" class="sub-filter-pill {{ 'active' if status_filter=='rejected' }}">❌ Отклонены</a>
+</div>
+
+<div class="tip" style="margin-bottom:16px;">
   💡 {% if is_admin %}Проверьте скриншоты. Одобрение начисляет +10G лиду и +10G менеджеру.{% else %}Ваши заявки на проверку. За каждую одобренную заявку вы получаете +10G на баланс.{% endif %}
 </div>
 
-<form method="get" class="inline" style="margin-bottom:14px;">
-  <select name="status" onchange="this.form.submit()">
-    <option value="">Все</option>
-    <option value="pending" {{ 'selected' if status_filter == 'pending' }}>На проверке</option>
-    <option value="approved" {{ 'selected' if status_filter == 'approved' }}>Одобрены</option>
-    <option value="rejected" {{ 'selected' if status_filter == 'rejected' }}>Отклонены</option>
-  </select>
-</form>
-
 {% if submissions %}
-{% for s in submissions %}
-<div class="card" style="margin-bottom:14px;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-    <div>
-      <strong>{{ s.lead_name or s.vk_id }}</strong>
-      <a href="{{ s.vk_url }}" target="_blank" class="btn btn-soft btn-sm" style="margin-left:6px;">Профиль</a>
-      <a href="{{ vk_chat_url(s.vk_id) }}" target="_blank" class="btn btn-soft btn-sm">💬 Написать</a>
-      <div class="muted" style="font-size:12px;margin-top:4px;">
-        Раунд {{ s.round_date }} {{ s.round_slot }} · менеджер {{ s.manager_name }}
-        {% if s.manager_balance is defined %}
-        · Баланс менеджера: {{ "%.2f"|format(s.manager_balance) }}G
-        {% endif %}
+<div class="sub-list">
+  {% for s in submissions %}
+  <div class="sub-card sub-card-{{ s.status }}">
+    <div class="sub-card-thumb">
+      <a href="{{ url_for('uploads.serve', filename=s.screenshot) }}" target="_blank">
+        <img src="{{ url_for('uploads.serve', filename=s.screenshot) }}" alt="Скриншот">
+      </a>
+    </div>
+
+    <div class="sub-card-body">
+      <div class="sub-card-top">
+        <div>
+          <div class="sub-card-name">{{ s.lead_name or s.vk_id }}</div>
+          <div class="sub-card-meta">
+            Раунд {{ s.round_date }} {{ s.round_slot }}
+            {% if is_admin %}· менеджер {{ s.manager_name }}{% endif %}
+            {% if s.manager_balance is defined and is_admin %}· баланс {{ "%.2f"|format(s.manager_balance) }}G{% endif %}
+          </div>
+        </div>
+        <span class="badge badge-{{ 'pending' if s.status == 'pending' else ('approved' if s.status == 'approved' else 'rejected') }}">
+          {{ '⏳ На проверке' if s.status == 'pending' else ('✅ Одобрена' if s.status == 'approved' else '❌ Отклонена') }}
+        </span>
       </div>
-    </div>
-    <span class="badge badge-{{ 'pending' if s.status == 'pending' else ('approved' if s.status == 'approved' else 'rejected') }}">
-      {{ 'На проверке' if s.status == 'pending' else ('✅ Одобрена' if s.status == 'approved' else '❌ Отклонена') }}
-    </span>
-  </div>
-  
-  <a href="{{ url_for('uploads.serve', filename=s.screenshot) }}" target="_blank">
-    <img src="{{ url_for('uploads.serve', filename=s.screenshot) }}" alt="Скриншот" style="max-width:280px;border-radius:8px;margin-top:10px;">
-  </a>
 
-  {% if s.admin_comment %}
-  <div class="tip" style="margin-top:10px;border-color:var(--amber);">
-    💬 Комментарий администратора: {{ s.admin_comment }}
-  </div>
-  {% endif %}
+      <div class="sub-card-actions">
+        <a href="{{ s.vk_url }}" target="_blank" class="btn btn-soft btn-sm">👤 Профиль</a>
+        <a href="{{ vk_chat_url(s.vk_id) }}" target="_blank" class="btn btn-soft btn-sm">💬 Написать</a>
+      </div>
 
-  {% if is_admin and s.status == 'pending' %}
-  <form method="post" action="{{ url_for('submissions.review', sub_id=s.id) }}" style="margin-top:10px;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label class="field">
-      <span>Комментарий для менеджера</span>
-      <textarea name="comment" rows="2" placeholder="Например: ID не виден на скрине, попросите переснять"></textarea>
-    </label>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-success btn-sm" type="submit" name="decision" value="approved">✅ Одобрить (+10G)</button>
-      <button class="btn btn-danger btn-sm" type="submit" name="decision" value="rejected">❌ Отклонить (-{{ penalty_amount }}G)</button>
+      {% if s.admin_comment %}
+      <div class="sub-comment">💬 {{ s.admin_comment }}</div>
+      {% endif %}
+
+      {% if is_admin and s.status == 'pending' %}
+      <form method="post" action="{{ url_for('submissions.review', sub_id=s.id) }}" class="sub-review-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <textarea name="comment" rows="2" placeholder="Комментарий для менеджера (например: ID не виден на скрине)"></textarea>
+        <div class="sub-review-buttons">
+          <button class="btn btn-success btn-sm" type="submit" name="decision" value="approved">✅ Одобрить (+10G)</button>
+          <button class="btn btn-danger btn-sm" type="submit" name="decision" value="rejected">❌ Отклонить (−{{ penalty_amount }}G)</button>
+        </div>
+      </form>
+      {% endif %}
     </div>
-    <div class="tip-danger" style="margin-top:6px;font-size:12px;">
-      ⚠️ При отклонении с менеджера спишется {{ penalty_amount }}G
-    </div>
-  </form>
-  {% endif %}
+  </div>
+  {% endfor %}
 </div>
-{% endfor %}
 {% else %}
-<div class="card"><p class="muted">Нет заявок.</p></div>
+<div class="sub-empty">
+  <div class="sub-empty-icon">📭</div>
+  <p class="muted">Заявок с таким фильтром нет.</p>
+</div>
 {% endif %}
+
+<style>
+.sub-stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.sub-stat-card {
+  flex: 1; min-width: 100px; background: var(--panel); border: 3px solid var(--ink, var(--border));
+  border-radius: 16px; padding: 14px; text-align: center;
+  box-shadow: 3px 3px 0 rgba(43,34,80,0.1);
+}
+.sub-stat-value { font-family: 'Fredoka', sans-serif; font-size: 22px; font-weight: 700; }
+.sub-stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 800; text-transform: uppercase; }
+.sub-stat-amber .sub-stat-value { color: #A67A00; }
+.sub-stat-green .sub-stat-value { color: #2C8A4A; }
+.sub-stat-red .sub-stat-value { color: #C23A55; }
+
+.sub-filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.sub-filter-pill {
+  padding: 7px 15px; border-radius: 20px; background-color: var(--panel2, #FFF6E8);
+  border: 2px solid var(--border); color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 700;
+}
+.sub-filter-pill:hover { border-color: var(--accent); color: var(--text); }
+.sub-filter-pill.active { background-color: var(--accent); color: #fff; border-color: var(--accent); }
+
+.sub-list { display: flex; flex-direction: column; gap: 14px; }
+.sub-card {
+  display: flex; gap: 16px; background: var(--panel); border: 3px solid var(--border); border-left: 5px solid var(--border);
+  border-radius: 16px; padding: 14px; transition: transform 0.15s ease;
+  box-shadow: 4px 4px 0 rgba(43,34,80,0.08);
+}
+.sub-card:hover { transform: translateY(-2px); }
+.sub-card-pending { border-left-color: #FFC857; }
+.sub-card-approved { border-left-color: #7ED957; }
+.sub-card-rejected { border-left-color: #FF4F6E; }
+
+.sub-card-thumb { flex-shrink: 0; width: 110px; height: 110px; border-radius: 12px; overflow: hidden; background: var(--panel2, #FFF6E8); border: 2px solid var(--border); }
+.sub-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.sub-card-body { flex: 1; min-width: 0; }
+.sub-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.sub-card-name { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 15px; }
+.sub-card-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-weight: 700; }
+
+.sub-card-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+.sub-comment { margin-top: 10px; padding: 8px 12px; background: #FFF3C4; border: 2px solid #FFD93D; border-radius: 10px; font-size: 12.5px; font-weight: 700; }
+
+.sub-review-form { margin-top: 12px; border-top: 2px solid #F0EBE0; padding-top: 12px; }
+.sub-review-form textarea { width: 100%; margin-bottom: 8px; }
+.sub-review-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.sub-empty { text-align: center; padding: 50px 0; }
+.sub-empty-icon { font-size: 36px; opacity: 0.6; margin-bottom: 8px; }
+
+@media (max-width: 640px) {
+  .sub-card { flex-direction: column; }
+  .sub-card-thumb { width: 100%; height: 160px; }
+}
+</style>
 {% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Моя коллекция{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('puzzle.index') }}" class="back-link" style="display:inline-block; margin-bottom:16px;">← К пазлу</a>
+
+<div class="gallery-hero">
+  <h1>🖼️ Моя коллекция</h1>
+  <p>Собрано <b>{{ unlocked_count }}</b> из {{ total_designs }} картин</p>
+</div>
+
+<div class="gallery-grid">
+  {% for item in gallery_items %}
+    <div class="gallery-card {{ 'gallery-card-locked' if not item.unlocked }}">
+      <div class="gallery-card-img" style="background-image:{{ item.image }}; background-size: 200px 200px;{{ '' if item.unlocked else ' filter: grayscale(1) brightness(1.3);' }}"></div>
+      <div class="gallery-card-body">
+        <div class="gallery-card-name">{{ item.name if item.unlocked else '🐚 ???' }}</div>
+        {% if item.unlocked %}
+          <div class="gallery-card-stat">Собрано раз: {{ item.times_collected }}</div>
+          <div class="gallery-card-stat">Заработано: {{ "%.0f"|format(item.total_reward) }}G</div>
+          <div class="gallery-card-stat muted" style="font-size:10.5px;">Последний раз: {{ item.last_completed }}</div>
+        {% else %}
+          <div class="gallery-card-stat muted">Ещё не собрана</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<style>
+.gallery-hero { text-align: center; margin-bottom: 24px; }
+.gallery-hero h1 { margin: 0 0 6px; }
+.gallery-hero p { color: var(--muted); margin: 0; font-weight: 700; }
+.gallery-hero p b { color: var(--candy-orange, var(--gold)); }
+
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; max-width: 780px; margin: 0 auto; }
+.gallery-card {
+  background: var(--panel); border: 3px solid var(--ink, var(--border)); border-radius: 18px; overflow: hidden;
+  box-shadow: 4px 4px 0 rgba(43,34,80,0.12); transition: transform 0.18s ease;
+}
+.gallery-card:hover { transform: translateY(-3px); }
+.gallery-card-locked { opacity: 0.6; }
+.gallery-card-img { width: 100%; height: 130px; }
+.gallery-card-body { padding: 12px 14px; }
+.gallery-card-name { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+.gallery-card-stat { font-size: 11px; color: var(--text); margin-bottom: 2px; font-weight: 700; }
+</style>
+{% endblock %}

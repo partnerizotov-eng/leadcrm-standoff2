@@ -293,6 +293,9 @@ def admin_confirm_payout(wid):
     from .referrals import on_withdrawal_completed
     on_withdrawal_completed(w["manager_id"])
 
+    from .achievements import trigger_achievement_check
+    trigger_achievement_check(w["manager_id"])
+
     notify(w["manager_id"],
            f"✅ Вывод #{wid} полностью завершён. Теперь можно запросить новый вывод.",
            url_for("withdrawals.index"))

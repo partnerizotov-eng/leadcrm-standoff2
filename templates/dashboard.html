@@ -56,12 +56,12 @@
 </div>
 <!-- KPIs -->
 <div class="grid-3" style="margin-bottom:18px;">
-  <div class="kpi">
+  <div class="kpi" id="tour-kpi-total">
     <span class="kpi-label">Всего лидов</span>
     <span class="kpi-value">{{ funnel.values()|sum }}</span>
   </div>
   {% if is_admin %}
-  <div class="kpi">
+  <div class="kpi" id="tour-kpi-second">
     <span class="kpi-label">Заявок на проверку</span>
     <span class="kpi-value gold">{{ pending_submissions or 0 }}</span>
   </div>
@@ -70,7 +70,7 @@
     <span class="kpi-value">{{ pending_withdrawals or 0 }}</span>
   </div>
   {% else %}
-  <div class="kpi">
+  <div class="kpi" id="tour-kpi-second">
     <span class="kpi-label">Мой баланс</span>
     <span class="kpi-value gold">{{ "%.2f"|format(my_stats.balance) if my_stats else "0.00" }}G</span>
   </div>
@@ -82,7 +82,7 @@
 </div>
 
 <!-- Воронка -->
-<div class="card">
+<div class="card" id="tour-funnel">
   <h2>Воронка</h2>
   {% for s in statuses %}
   <div style="margin-bottom:10px;">
@@ -99,7 +99,7 @@
 
 <!-- Рейтинг -->
 {% if is_admin and leaderboard %}
-<div class="card">
+<div class="card" id="tour-leaderboard">
   <h2>🏆 Рейтинг менеджеров</h2>
   <table>
     <thead>

@@ -15,3 +15,6 @@ backup_*.zip
 backup_*/
 __pycache__/
 *.pyc
+
+# Автоматические JSON-бэкапы данных (создаются backup_scheduler.py каждые 6 часов)
+backups/

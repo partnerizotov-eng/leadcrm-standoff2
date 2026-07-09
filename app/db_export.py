@@ -29,3 +29,36 @@ def export_database():
 
     filename = f"leadcrm_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
     return send_file(tmp_path, as_attachment=True, download_name=filename, mimetype="application/octet-stream")
+
+
+@bp.route("/backups")
+@admin_required
+def backups_list():
+    from .backup_scheduler import list_backups
+    from flask import render_template
+    return render_template("backups.html", backups=list_backups())
+
+
+@bp.route("/backups/create", methods=["POST"])
+@admin_required
+def backups_create_now():
+    from .backup_scheduler import create_backup
+    from flask import flash, redirect, url_for
+    filename = create_backup()
+    flash(f"✅ Бэкап создан: {filename}", "success")
+    return redirect(url_for("db_export.backups_list"))
+
+
+@bp.route("/backups/<path:filename>/download")
+@admin_required
+def backups_download(filename):
+    import os
+    from flask import current_app, abort
+    safe_name = os.path.basename(filename)
+    if not (safe_name.startswith("backup_") and safe_name.endswith(".json")):
+        abort(404)
+    backups_dir = os.path.join(current_app.root_path, "..", "backups")
+    full_path = os.path.join(backups_dir, safe_name)
+    if not os.path.isfile(full_path):
+        abort(404)
+    return send_file(full_path, as_attachment=True, download_name=safe_name, mimetype="application/json")
