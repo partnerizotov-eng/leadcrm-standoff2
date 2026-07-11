@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Воронка конверсии{% endblock %}
+{% block content %}
+<h1>📊 Воронка конверсии</h1>
+
+<div class="tip-warning" style="margin:16px 0; line-height:1.5; font-size:13px;">
+  ℹ️ Считается по текущему статусу лида с учётом порядка стадий (лид «Участвовал»
+  автоматически засчитан и в более ранние стадии) — точной истории переходов для
+  старых лидов нет, но с этого момента она пишется на будущее.
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <form method="get" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+    <div>
+      <label style="display:block; font-weight:700; margin-bottom:4px; font-size:13px;">Период</label>
+      <select name="days">
+        {% for d in [7, 30, 90, 365] %}
+        <option value="{{ d }}" {% if days == d %}selected{% endif %}>{{ d }} дней</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block; font-weight:700; margin-bottom:4px; font-size:13px;">Менеджер</label>
+      <select name="manager_id">
+        <option value="">Все</option>
+        {% for m in managers %}
+        <option value="{{ m.id }}" {% if manager_id == m.id %}selected{% endif %}>{{ m.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block; font-weight:700; margin-bottom:4px; font-size:13px;">Источник</label>
+      <select name="source_group">
+        <option value="">Все</option>
+        {% for sg in source_groups %}
+        <option value="{{ sg }}" {% if source_group == sg %}selected{% endif %}>{{ sg }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-gold" type="submit">Применить</button>
+  </form>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">Всего лидов за период: {{ total }}</h2>
+  {% for s in stages %}
+  <div style="margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; font-weight:700; font-size:14px; margin-bottom:4px;">
+      <span>{{ s.label }}</span>
+      <span>{{ s.count }} ({{ s.pct }}% от всех{% if not loop.first %}, {{ s.pct_of_prev }}% от предыдущей стадии{% endif %})</span>
+    </div>
+    <div style="height:14px; border-radius:7px; background:var(--panel2); border:1px solid var(--border); overflow:hidden;">
+      <div style="height:100%; width:{{ s.pct }}%; background:var(--candy-cyan); border-radius:7px;"></div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if dropoffs %}
+  <div style="margin-top:16px; padding-top:12px; border-top:2px dashed var(--border);">
+    <div style="font-weight:700; font-size:13px; color:var(--muted); margin-bottom:8px; text-transform:uppercase;">Не дошли</div>
+    {% for d in dropoffs %}
+    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+      <span>{{ 'Отказался' if d.key == 'declined' else 'Не отвечает' }}</span>
+      <span>{{ d.count }} ({{ d.pct }}%)</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="sim-two" style="display:grid; gap:16px; grid-template-columns:1fr; margin-bottom:16px;">
+  <div class="card">
+    <h2 style="margin-top:0;">По менеджерам</h2>
+    <table>
+      <thead><tr><th>Менеджер</th><th>Лидов</th><th>Конверсия</th></tr></thead>
+      <tbody>
+        {% for r in by_manager %}
+        <tr><td>{{ r.name }}</td><td>{{ r.total }}</td><td>{{ r.converted }} ({{ r.pct }}%)</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0;">По источникам</h2>
+    <table>
+      <thead><tr><th>Источник</th><th>Лидов</th><th>Конверсия</th></tr></thead>
+      <tbody>
+        {% for r in by_source %}
+        <tr><td>{{ r.source_group }}</td><td>{{ r.total }}</td><td>{{ r.converted }} ({{ r.pct }}%)</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

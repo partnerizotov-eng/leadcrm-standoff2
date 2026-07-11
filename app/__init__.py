@@ -56,14 +56,50 @@ def create_app(config_object=Config):
         if request.endpoint.startswith(("auth.", "profile.", "uploads.")):
             return
         manager_id = session.get("manager_id")
-        if not manager_id or session.get("role") == "admin":
+        if not manager_id:
             return
-        manager = db.query_one("SELECT profile_completed FROM managers WHERE id=?", (manager_id,))
-        if manager and not manager["profile_completed"]:
+        manager = db.query_one("SELECT profile_completed FROM managers WHERE id=? AND is_deleted=0", (manager_id,))
+        if not manager:
+            # Сессия ссылается на менеджера, которого в текущей базе больше
+            # нет (база была очищена/восстановлена из бэкапа, менеджер
+            # удалён) — выходим из мёртвой сессии. Без этой проверки код
+            # ниже по цепочке падает с 500 (FOREIGN KEY constraint failed)
+            # там, где несуществующий manager_id используется как FK.
+            session.clear()
+            return redirect(url_for("auth.login"))
+
+        session_uid = session.get("session_uid")
+        if session_uid:
+            sess_row = db.query_one("SELECT revoked FROM active_sessions WHERE session_id=?", (session_uid,))
+            if sess_row and sess_row["revoked"]:
+                # Админ принудительно разлогинил эту сессию со страницы
+                # "Активные сессии" — сразу выходим, даже если это сессия
+                # самого админа.
+                session.clear()
+                return redirect(url_for("auth.login"))
+            db.execute("UPDATE active_sessions SET last_seen_at=datetime('now') WHERE session_id=?", (session_uid,))
+
+        if request.endpoint.startswith(("admin.", "funnel.", "risk.")) or request.endpoint == "managers.index":
+            allowlist = db.query_all("SELECT ip_or_cidr FROM admin_ip_allowlist")
+            if allowlist:
+                from .security import ip_allowed
+                ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+                if not ip_allowed(ip, [r["ip_or_cidr"] for r in allowlist]):
+                    return "Доступ запрещён с этого IP-адреса.", 403
+
+        if session.get("role") == "admin":
+            return
+        if not manager["profile_completed"]:
             return redirect(url_for("profile.complete"))
 
     from .leads import vk_chat_url
     app.jinja_env.globals["vk_chat_url"] = vk_chat_url
+
+    import json as _json_mod
+    app.jinja_env.filters["from_json"] = lambda s: _json_mod.loads(s) if s else []
+
+    from .pii_encryption import decrypt_field
+    app.jinja_env.filters["decrypt_pii"] = decrypt_field
 
     @app.after_request
     def security_headers(resp):
@@ -104,17 +140,27 @@ def create_app(config_object=Config):
     from .advent_calendar import bp as advent_calendar_bp
     from .db_export import bp as db_export_bp
     from .puzzle import bp as puzzle_bp
+    from .simulator import bp as simulator_bp
+    from .rating import bp as rating_bp
+    from .funnel import bp as funnel_bp
+    from .risk_dashboard import bp as risk_bp
+    from .totp_setup import bp as totp_setup_bp
+    from .push_notify import bp as push_bp
+    from .team import bp as team_bp
 
     for bp in (auth_bp, leads_bp, scripts_bp, dashboard_bp, managers_bp,
                submissions_bp, withdrawals_bp, notifications_bp, uploads_bp,
                journal_bp, game_bp, achievements_bp, referrals_bp, ai_bp,
                admin_bp, payouts_bp, support_tickets_bp, profile_bp,
                contest_bp, chat_bp, db_export_bp, wheel_bp, advent_calendar_bp,
-               puzzle_bp):
+               puzzle_bp, simulator_bp, rating_bp, funnel_bp, risk_bp, totp_setup_bp, push_bp, team_bp):
         app.register_blueprint(bp)
 
     from .backup_scheduler import start_backup_scheduler
     start_backup_scheduler(app)
+
+    from .telegram_notify import start_risk_digest_scheduler
+    start_risk_digest_scheduler(app)
 
     from .wheel import ensure_wheel_prizes
     with app.app_context():
@@ -154,6 +200,17 @@ def create_app(config_object=Config):
         except Exception:
             return jsonify(status="error"), 503
         return jsonify(status="ok")
+
+    @app.route("/health")
+    def health():
+        from flask import jsonify
+        try:
+            db.query_one("SELECT 1")
+            db_ok = True
+        except Exception:
+            db_ok = False
+        status = 200 if db_ok else 503
+        return jsonify(status="ok" if db_ok else "error", database=db_ok), status
 
     return app
 

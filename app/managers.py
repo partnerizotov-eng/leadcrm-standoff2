@@ -9,7 +9,7 @@ from flask import Blueprint, Response, flash, redirect, render_template, request
 from . import db
 from .db import execute, log_activity, query_all, query_one
 from .notifications import notify
-from .security import admin_required, hash_password
+from .security import admin_required, hash_password, teamlead_required
 
 bp = Blueprint("managers", __name__)
 
@@ -39,7 +39,7 @@ def manager_stats():
     week_ago = (date.today() - timedelta(days=7)).isoformat()
 
     rows = query_all(f"""
-        SELECT m.id, m.name, m.login, m.is_active, m.balance, m.total_earned,
+        SELECT m.id, m.name, m.login, m.is_active, m.balance, m.total_earned, m.team_lead_id,
           {_worked_seconds_expr()} AS worked_seconds,
           (SELECT COUNT(*) FROM leads WHERE assigned_manager_id=m.id) AS leads_total,
           (SELECT COUNT(*) FROM leads WHERE assigned_manager_id=m.id AND date(found_at)=?) AS leads_today,
@@ -63,11 +63,26 @@ def manager_stats():
 
 
 @bp.route("/managers")
-@admin_required
+@teamlead_required
 def index():
     stats = manager_stats()
+    if session.get("role") == "teamlead":
+        my_id = session["manager_id"]
+        stats = [s for s in stats if s.get("team_lead_id") == my_id]
     top3 = sorted(stats, key=lambda x: x["earnings"], reverse=True)[:3]
-    return render_template("managers.html", managers=stats, top3=top3)
+    team_leads = query_all("SELECT id, name FROM managers WHERE role IN ('admin','teamlead') ORDER BY name")
+    return render_template("managers.html", managers=stats, top3=top3,
+                           team_leads=[dict(t) for t in team_leads],
+                           is_admin=(session.get("role") == "admin"))
+
+
+@bp.route("/managers/<int:manager_id>/set-team-lead", methods=["POST"])
+@admin_required
+def set_team_lead(manager_id):
+    team_lead_id = request.form.get("team_lead_id", type=int) or None
+    execute("UPDATE managers SET team_lead_id=? WHERE id=?", (team_lead_id, manager_id))
+    flash("✅ Тимлид обновлён.", "success")
+    return redirect(url_for("managers.index"))
 
 
 @bp.route("/managers/create", methods=["POST"])

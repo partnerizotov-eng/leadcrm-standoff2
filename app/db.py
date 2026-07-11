@@ -533,6 +533,103 @@ CREATE TABLE IF NOT EXISTS script_usage_logs (
     FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE,
     FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
 );
+
+-- ==================== Второй раунд доп. функций ====================
+
+CREATE TABLE IF NOT EXISTS lead_notes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id     INTEGER NOT NULL,
+    manager_id  INTEGER,
+    text        TEXT    NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_lead_notes_lead ON lead_notes(lead_id);
+
+CREATE TABLE IF NOT EXISTS canned_responses (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT    NOT NULL,
+    text        TEXT    NOT NULL,
+    created_by  INTEGER,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (created_by) REFERENCES managers(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS shifts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER NOT NULL,
+    shift_date  TEXT    NOT NULL,
+    start_time  TEXT    NOT NULL,
+    end_time    TEXT    NOT NULL,
+    created_by  INTEGER,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES managers(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_shifts_manager_date ON shifts(manager_id, shift_date);
+
+CREATE TABLE IF NOT EXISTS balance_adjustments (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER NOT NULL,
+    admin_id    INTEGER,
+    amount      REAL    NOT NULL,
+    kind        TEXT    NOT NULL DEFAULT 'other',
+    reason      TEXT    NOT NULL,
+    balance_before REAL,
+    balance_after  REAL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES managers(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS active_sessions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER NOT NULL,
+    session_id  TEXT    NOT NULL UNIQUE,
+    ip_address  TEXT,
+    user_agent  TEXT,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    last_seen_at TEXT   DEFAULT (datetime('now')),
+    revoked     INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_active_sessions_manager ON active_sessions(manager_id);
+
+CREATE TABLE IF NOT EXISTS login_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER,
+    login_attempted TEXT,
+    ip_address  TEXT,
+    success     INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_log_manager ON login_log(manager_id);
+
+CREATE TABLE IF NOT EXISTS admin_ip_allowlist (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip_or_cidr  TEXT    NOT NULL UNIQUE,
+    note        TEXT    DEFAULT '',
+    created_at  TEXT    DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS rating_seasons (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    label       TEXT    NOT NULL,
+    started_at  TEXT,
+    ended_at    TEXT    DEFAULT (datetime('now')),
+    standings   TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id  INTEGER NOT NULL,
+    endpoint    TEXT    NOT NULL UNIQUE,
+    subscription_json TEXT NOT NULL,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (manager_id) REFERENCES managers(id) ON DELETE CASCADE
+);
 """
 
 
@@ -631,6 +728,15 @@ def _migrate(conn):
         ("managers", "puzzle_current_design", "ALTER TABLE managers ADD COLUMN puzzle_current_design TEXT"),
         ("puzzle_completions", "design_id", "ALTER TABLE puzzle_completions ADD COLUMN design_id TEXT NOT NULL DEFAULT 'fire'"),
         ("managers", "is_deleted", "ALTER TABLE managers ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0"),
+        ("managers", "trainer_passed", "ALTER TABLE managers ADD COLUMN trainer_passed INTEGER NOT NULL DEFAULT 0"),
+        ("managers", "trainer_score", "ALTER TABLE managers ADD COLUMN trainer_score INTEGER"),
+        ("managers", "trainer_passed_at", "ALTER TABLE managers ADD COLUMN trainer_passed_at TEXT"),
+        ("managers", "totp_secret", "ALTER TABLE managers ADD COLUMN totp_secret TEXT"),
+        ("managers", "totp_enabled", "ALTER TABLE managers ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0"),
+        ("managers", "totp_backup_codes", "ALTER TABLE managers ADD COLUMN totp_backup_codes TEXT"),
+        ("leads", "tags", "ALTER TABLE leads ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'"),
+        ("managers", "team_lead_id", "ALTER TABLE managers ADD COLUMN team_lead_id INTEGER"),
+        ("managers", "dark_mode", "ALTER TABLE managers ADD COLUMN dark_mode INTEGER NOT NULL DEFAULT 0"),
     ]
     for table, column, ddl in migrations:
         if not _column_exists(conn, table, column):

@@ -5,6 +5,28 @@
 {% block content %}
 <h1>📜 Журнал действий</h1>
 
+<div class="card" style="margin-bottom:16px;">
+  <form method="get" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+    <div>
+      <label style="display:block; font-weight:700; margin-bottom:4px; font-size:13px;">Менеджер</label>
+      <select name="manager_id">
+        <option value="">Все</option>
+        {% for m in managers %}
+        <option value="{{ m.id }}" {% if manager_id == m.id %}selected{% endif %}>{{ m.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="flex:1; min-width:200px;">
+      <label style="display:block; font-weight:700; margin-bottom:4px; font-size:13px;">Поиск по тексту</label>
+      <input type="text" name="q" value="{{ search }}" placeholder="например: удалил, изменил баланс...">
+    </div>
+    <button class="btn btn-gold" type="submit">Фильтровать</button>
+    {% if manager_id or search %}
+    <a href="{{ url_for('journal.index') }}" class="btn btn-soft">Сбросить</a>
+    {% endif %}
+  </form>
+</div>
+
 <div class="card">
   <table>
     <thead>
@@ -28,5 +50,15 @@
       {% endfor %}
     </tbody>
   </table>
+
+  <div style="display:flex; justify-content:space-between; margin-top:16px;">
+    {% if page > 1 %}
+      <a class="btn btn-soft btn-sm" href="{{ url_for('journal.index', page=page-1, manager_id=manager_id, q=search) }}">← Раньше</a>
+    {% else %}<span></span>{% endif %}
+    <span class="muted">Страница {{ page }}</span>
+    {% if has_more %}
+      <a class="btn btn-soft btn-sm" href="{{ url_for('journal.index', page=page+1, manager_id=manager_id, q=search) }}">Позже →</a>
+    {% else %}<span></span>{% endif %}
+  </div>
 </div>
 {% endblock %}

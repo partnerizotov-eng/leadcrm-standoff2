@@ -16,10 +16,10 @@
         <input type="text" name="full_name" placeholder="Иванов Иван Иванович" required value="{{ manager.name if manager.profile_completed else '' }}">
 
         <label>Email <span class="req">*</span></label>
-        <input type="email" name="email" placeholder="name@mail.ru" required value="{{ manager.email or '' }}">
+        <input type="email" name="email" placeholder="name@mail.ru" required value="{{ manager.email|decrypt_pii or '' }}">
 
         <label>Ссылка на VK <span class="req">*</span></label>
-        <input type="text" name="vk_url" placeholder="vk.com/my_profile" required value="{{ manager.vk_url or '' }}">
+        <input type="text" name="vk_url" placeholder="vk.ru/my_profile" required value="{{ manager.vk_url or '' }}">
 
         <label>ID в Standoff 2 <span class="req">*</span></label>
         <input type="text" name="game_id" placeholder="Например: 10293847" required value="{{ manager.game_id or '' }}">

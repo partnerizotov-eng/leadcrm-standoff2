@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Когорты{% endblock %}
+{% block content %}
+<h1>📅 Когортный анализ</h1>
+<p class="muted" style="margin-bottom:16px;">Для лидов, найденных в каждом месяце: какой процент в итоге поучаствовал хотя бы раз, и какой процент вернулся на второй конкурс.</p>
+
+<div class="card">
+  <table>
+    <thead><tr><th>Месяц</th><th>Найдено</th><th>Поучаствовали</th><th>Вернулись</th></tr></thead>
+    <tbody>
+      {% for c in cohorts %}
+      <tr>
+        <td>{{ c.month }}</td>
+        <td>{{ c.total }}</td>
+        <td>{{ c.participated }} ({{ c.participated_pct }}%)</td>
+        <td>{{ c.returned }} ({{ c.returned_pct }}%)</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">Данных пока нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<a href="{{ url_for('funnel.index') }}" class="btn btn-soft" style="margin-top:16px; display:inline-block;">← К воронке</a>
+{% endblock %}

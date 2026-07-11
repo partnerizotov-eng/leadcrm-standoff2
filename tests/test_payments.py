@@ -38,11 +38,19 @@ class Base(unittest.TestCase):
         return self.client.post("/login", data={"login": "admin", "password": "adminpass123"},
                                 follow_redirects=True)
 
-    def make_manager(self, name="Manager"):
+    def make_manager(self, name="Manager", profile_completed=True, trainer_passed=True):
+        # profile_completed=1 и trainer_passed=1 по умолчанию: иначе
+        # force_profile_completion / trainer_required (before_request и
+        # маршруты в leads.py) редиректят на анкету/тренажёр вместо
+        # ожидаемой страницы. Тесты именно ЭТИХ гейтов создают менеджера
+        # с явным trainer_passed=False/profile_completed=False.
         with self.app.app_context():
             login = f"mgr_{secrets.token_hex(4)}"
-            mid = execute("INSERT INTO managers (login, password_hash, name, role) VALUES (?,?,?,'manager')",
-                         (login, hash_password("mgrpass"), name))
+            mid = execute(
+                "INSERT INTO managers (login, password_hash, name, role, profile_completed, trainer_passed) "
+                "VALUES (?,?,?,'manager',?,?)",
+                (login, hash_password("mgrpass"), name,
+                 1 if profile_completed else 0, 1 if trainer_passed else 0))
         return mid, login
 
     def login_manager(self, login, password="mgrpass"):
@@ -57,7 +65,7 @@ class Base(unittest.TestCase):
 
 class TestVkChatLink(unittest.TestCase):
     def test_builds_direct_message_url(self):
-        self.assertEqual(vk_chat_url("durov"), "https://vk.com/im?sel=durov")
+        self.assertEqual(vk_chat_url("durov"), "https://vk.ru/im?sel=durov")
 
 
 class TestSubmissionFlow(Base):
@@ -326,7 +334,13 @@ class TestWithdrawalFlow(Base):
         self.login_manager(login)
         self.client.post("/withdrawals/request", data={"amount": "50"})
         r2 = self.client.post("/withdrawals/request", data={"amount": "50"}, follow_redirects=True)
-        self.assertIn("недостаточно", r2.get_data(as_text=True))
+        # Второй запрос блокируется либо нехваткой баланса, либо (что тут и
+        # произошло) отдельным, ещё более строгим правилом "нельзя создать
+        # новый вывод, пока текущий не прошёл проверку админом" — оба исхода
+        # корректно предотвращают double-withdrawal. Реальный инвариант,
+        # который тест проверяет, — это состояние баланса/количества ниже.
+        body = r2.get_data(as_text=True)
+        self.assertTrue("недостаточно" in body or "текущий вывод" in body, body)
         with self.app.app_context():
             manager = query_one("SELECT balance FROM managers WHERE id=?", (mgr,))
             count = query_one("SELECT COUNT(*) c FROM withdrawals WHERE manager_id=?", (mgr,))["c"]

@@ -5,6 +5,9 @@
 {% block content %}
 <h1>🏆 Рейтинг менеджеров</h1>
 
+<a href="{{ url_for('rating.export_csv') }}" class="btn btn-soft btn-sm" style="margin-bottom:12px; display:inline-block;">⬇ Экспорт CSV</a>
+<a href="{{ url_for('rating.seasons') }}" class="btn btn-soft btn-sm" style="margin-bottom:12px; display:inline-block;">🏆 Архив сезонов</a>
+
 <p class="muted" style="margin-bottom:18px;">
   Общий рейтинг всех менеджеров по конверсии.
   {% if current_pos %}Ваше место: <strong>#{{ current_pos }}</strong>{% endif %}

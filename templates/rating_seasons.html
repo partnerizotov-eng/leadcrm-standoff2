@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Сезоны рейтинга{% endblock %}
+{% block content %}
+<h1>🏆 Сезоны рейтинга</h1>
+
+{% if current_manager.role == 'admin' %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">Закрыть текущий сезон</h2>
+  <p class="muted">Сохраняет снимок текущего рейтинга под меткой — реальные балансы/заработок не трогаются, это только архив для истории.</p>
+  <form method="post" action="{{ url_for('rating.close_season') }}" style="display:flex; gap:8px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="label" placeholder="напр. Июль 2026" required>
+    <button class="btn btn-gold" type="submit">Заархивировать</button>
+  </form>
+</div>
+{% endif %}
+
+{% for s in seasons %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">{{ s.label }} <span class="muted" style="font-size:12px; font-weight:400;">({{ s.ended_at }})</span></h2>
+  <table>
+    <thead><tr><th>#</th><th>Менеджер</th><th>Лидов</th><th>Конверсия</th></tr></thead>
+    <tbody>
+      {% for r in s.standings[:10] %}
+      <tr><td>{{ loop.index }}</td><td>{{ r.name }}</td><td>{{ r.total_leads }}</td><td>{{ r.conversion_pct }}%</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted">Ещё ни одного сезона не закрыто.</p>
+{% endfor %}
+
+<a href="{{ url_for('rating.index') }}" class="btn btn-soft">← К текущему рейтингу</a>
+{% endblock %}

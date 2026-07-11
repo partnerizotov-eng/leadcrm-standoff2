@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Rate-limit{% endblock %}
+{% block content %}
+<h1>⏳ Rate-limit — активные попытки</h1>
+<p class="muted" style="margin-bottom:16px;">Снимок в реальном времени (хранится в памяти процесса — сбрасывается при перезапуске сервера).</p>
+<div class="card">
+  <table>
+    <thead><tr><th>Маршрут</th><th>Клиент (IP)</th><th>Попыток за час</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="mono">{{ r.view }}</td>
+        <td class="mono">{{ r.client }}</td>
+        <td>{{ r.hits_last_hour }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">Сейчас ничего активного — тихо.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

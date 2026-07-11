@@ -53,6 +53,6 @@ def restore_lead(log_id):
     lead_id = execute("""
         INSERT INTO leads (name, vk_id, vk_url, assigned_manager_id, status)
         VALUES (?, ?, ?, ?, 'new')
-    """, (log['lead_name'], log['lead_vk_id'], f"https://vk.com/id{log['lead_vk_id']}", log['manager_id']))
+    """, (log['lead_name'], log['lead_vk_id'], f"https://vk.ru/id{log['lead_vk_id']}", log['manager_id']))
     
     return True, f"✅ Лид {log['lead_name']} восстановлен"

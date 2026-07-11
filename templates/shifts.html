@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Смены{% endblock %}
+{% block content %}
+<h1>🗓️ Календарь смен</h1>
+
+<div class="card" style="margin-bottom:16px;">
+  <form method="get" style="display:flex; gap:8px; align-items:flex-end;">
+    <label class="field"><span>Месяц</span><input type="month" name="month" value="{{ month }}"></label>
+    <button class="btn btn-soft" type="submit">Показать</button>
+  </form>
+</div>
+
+{% if is_admin %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">Добавить смену</h2>
+  <form method="post" action="{{ url_for('team.shifts_add') }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field"><span>Менеджер</span>
+      <select name="manager_id" required>
+        {% for m in managers %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="field"><span>Дата</span><input type="date" name="shift_date" required></label>
+    <label class="field"><span>Начало</span><input type="time" name="start_time" required></label>
+    <label class="field"><span>Конец</span><input type="time" name="end_time" required></label>
+    <button class="btn btn-gold" type="submit">Добавить</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <table>
+    <thead><tr><th>Дата</th><th>Менеджер</th><th>Время</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for s in shifts %}
+      <tr>
+        <td>{{ s.shift_date }}</td>
+        <td>{{ s.manager_name }}</td>
+        <td>{{ s.start_time }} – {{ s.end_time }}</td>
+        {% if is_admin %}
+        <td>
+          <form method="post" action="{{ url_for('team.shifts_delete', shift_id=s.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm" type="submit">Удалить</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">Смен на этот месяц нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

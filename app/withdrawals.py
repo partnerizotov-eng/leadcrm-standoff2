@@ -147,6 +147,17 @@ def create():
                f"💰 Заявка на вывод от {manager['name']} на сумму {amount:.2f}G",
                url_for("withdrawals.index"))
 
+    LARGE_WITHDRAWAL_THRESHOLD = 200
+    if amount >= LARGE_WITHDRAWAL_THRESHOLD:
+        try:
+            from .email_notify import notify_admin_email
+            notify_admin_email(
+                f"Крупный вывод: {amount:.2f}G",
+                f"Менеджер {manager['name']} запросил вывод {amount:.2f}G (заявка #{wid}). "
+                f"Проверь в CRM: {url_for('withdrawals.index', _external=True)}")
+        except Exception:
+            pass  # email — best-effort, не должен мешать основному потоку
+
     log_activity(f"Менеджер {manager['name']} создал заявку на вывод #{wid}: {amount:.2f}G.", manager_id)
     flash("✅ Заявка на вывод создана. Ожидайте подтверждения администратора.", "success")
     return redirect(url_for("withdrawals.index"))

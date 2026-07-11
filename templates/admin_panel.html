@@ -38,7 +38,7 @@
             <tr>
               <td>{{ manager.name }}</td>
               <td>{{ manager.login }}</td>
-              <td>{{ manager.email or '—' }}</td>
+              <td>{{ manager.email|decrypt_pii or '—' }}</td>
               <td>{% if manager.vk_url %}<a href="{{ manager.vk_url }}" target="_blank">открыть</a>{% else %}—{% endif %}</td>
               <td>{{ manager.game_id or '—' }}</td>
               <td>
@@ -125,7 +125,7 @@
       <form method="POST" action="{{ url_for('admin.player_add_balance') }}">
         {{ csrf_field() }}
         <label>VK профиль игрока (ссылка или ID):</label>
-        <input type="text" name="vk_input" placeholder="https://vk.com/id123456 или 123456" required>
+        <input type="text" name="vk_input" placeholder="https://vk.ru/id123456 или 123456" required>
 
         <label>Сумма голды (G):</label>
         <input type="number" name="amount" min="1" step="0.01" required>
@@ -168,7 +168,7 @@
       <form method="GET" action="{{ url_for('admin.vk_quick_access') }}">
         {{ csrf_field() }}
         <label>Введи VK ID или ссылку:</label>
-        <input type="text" name="vk_input" placeholder="https://vk.com/id123456 или 123456" required>
+        <input type="text" name="vk_input" placeholder="https://vk.ru/id123456 или 123456" required>
 
         <div style="display: flex; gap: 10px;">
           <button type="submit" name="action" value="profile" class="btn-primary" style="flex: 1;">🔗 Открыть профиль</button>
@@ -322,7 +322,7 @@
 
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
         {% for photo in top_player_photos %}
-          <div style="background-color: #1b1f29; padding: 10px; border-radius: 6px; border: 1px solid #262b36;">
+          <div style="background-color: var(--panel); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
             <img src="/{{ photo.file_path }}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 10px;">
             <p style="font-size: 14px; margin: 0 0 10px 0;">{{ photo.description }}</p>
             <form method="POST" action="{{ url_for('admin.top_player_photo_delete', photo_id=photo.id) }}">
@@ -367,9 +367,9 @@
     <div class="card-body">
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
         {% for script in all_scripts %}
-          <div style="background-color: #1b1f29; padding: 15px; border-radius: 6px; border-left: 3px solid #6c8cff;">
+          <div style="background-color: var(--panel); padding: 15px; border-radius: 6px; border-left: 3px solid #6c8cff;">
             <h4 style="margin-top: 0; color: #6c8cff;">{{ script.title }}</h4>
-            <div style="background-color: #0f1115; padding: 10px; border-radius: 4px; margin-bottom: 10px; max-height: 100px; overflow-y: auto;">
+            <div style="background-color: var(--panel2); padding: 10px; border-radius: 4px; margin-bottom: 10px; max-height: 100px; overflow-y: auto;">
               <p style="margin: 0; font-size: 13px;">{{ script.text }}</p>
             </div>
             <form method="POST" action="{{ url_for('admin.script_delete', script_id=script.id) }}">
@@ -386,19 +386,19 @@
 <style>
 .kpi-dashboard { display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 24px 0; }
 .kpi-box {
-  background: linear-gradient(135deg, #1b1f29, #171a21);
-  border: 1px solid #262b36; border-radius: 10px; padding: 14px 20px;
+  background: linear-gradient(135deg, var(--panel), var(--panel2));
+  border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px;
   display:flex; flex-direction:column; gap:4px; min-width:120px;
 }
 .kpi-num { font-size:22px; font-weight:700; color:#6c8cff; }
-.kpi-label { font-size:12px; color:#8a90a2; }
+.kpi-label { font-size:12px; color:var(--muted); }
 
 .admin-quick-nav { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
 .quick-nav-pill {
-  padding:9px 18px; border-radius:20px; background-color:#1b1f29;
-  border:1px solid #262b36; color:#e8e9ee; text-decoration:none; font-size:13px; font-weight:600;
+  padding:9px 18px; border-radius:20px; background-color:var(--panel);
+  border:1px solid var(--border); color:var(--text); text-decoration:none; font-size:13px; font-weight:600;
   transition: all 0.2s;
 }
-.quick-nav-pill:hover { border-color:#6c8cff; background-color:#20263a; }
+.quick-nav-pill:hover { border-color:#6c8cff; background-color:var(--panel2); }
 </style>
 {% endblock %}

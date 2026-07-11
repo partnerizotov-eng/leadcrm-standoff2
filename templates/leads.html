@@ -8,7 +8,7 @@
 <div class="tip">
   💡 Нашли игрока Standoff 2? Добавьте его и привяжите игровой ID.
   <br>
-  📌 <strong>Формат ссылки VK:</strong> vk.com/id123, vk.com/username или просто id123
+  📌 <strong>Формат ссылки VK:</strong> vk.ru/id123, vk.ru/username или просто id123 (vk.com тоже работает)
 </div>
 
 {% if check_result %}
@@ -53,14 +53,14 @@
   <h2>🔍 Проверка лида</h2>
   <p class="muted" style="font-size:12.5px; margin-bottom:10px;">
     Прежде чем писать лиду — проверь, не ведёт ли его уже другой менеджер. Вставь ссылку в любом виде:
-    vk.com, vk.ru, m.vk.com, с https:// или без, просто id12345 или username.
+    vk.ru, vk.com, m.vk.ru, с https:// или без, просто id12345 или username.
   </p>
   <form method="post" action="{{ url_for('leads.check') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
       <label class="field" style="flex:1; min-width:220px; margin-bottom:0;">
         <span>Ссылка VK (любой формат)</span>
-        <input type="text" name="vk_url" placeholder="vk.com/id123, durov, https://m.vk.com/username..." required>
+        <input type="text" name="vk_url" placeholder="vk.ru/id123, durov, https://m.vk.ru/username..." required>
       </label>
       <button class="btn btn-soft" type="submit" style="margin-bottom:0;">🔍 Проверить</button>
     </div>
@@ -74,9 +74,9 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label class="field">
         <span>Ссылка на профиль ВК</span>
-        <input type="text" name="vk_url" placeholder="vk.com/id12345 или vk.com/username" required>
+        <input type="text" name="vk_url" placeholder="vk.ru/id12345 или vk.ru/username" required>
         <span style="font-size:11px;color:var(--muted);margin-top:4px;display:block;">
-          ✅ Примеры: vk.com/id123, vk.com/durov, id12345
+          ✅ Примеры: vk.ru/id123, vk.ru/durov, id12345
         </span>
       </label>
       <label class="field">
@@ -102,9 +102,9 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label class="field">
         <span>Ссылки (по одной на строку)</span>
-        <textarea name="profiles" rows="6" placeholder="vk.com/id123&#10;vk.com/id456&#10;vk.com/username" required></textarea>
+        <textarea name="profiles" rows="6" placeholder="vk.ru/id123&#10;vk.ru/id456&#10;vk.ru/username" required></textarea>
         <span style="font-size:11px;color:var(--muted);margin-top:4px;display:block;">
-          📌 Формат: vk.com/id123, vk.com/username или просто id123
+          📌 Формат: vk.ru/id123, vk.ru/username или просто id123 (vk.com тоже работает)
         </span>
       </label>
       <label class="field">
@@ -127,16 +127,97 @@
       <button class="btn btn-gold" type="submit">📦 Импортировать</button>
     </form>
   </div>
+
+  <div class="card" style="border-color:var(--gold); margin-top:12px;">
+    <h2>📄 Импорт из файла (CSV / Excel)</h2>
+    <div class="tip-warning" style="font-size:12px;padding:6px 10px;margin-bottom:10px;">
+      ⚠️ Первая колонка каждой строки — ссылка VK. .csv работает всегда;
+      для .xlsx на сервере нужен пакет <code>openpyxl</code>.
+    </div>
+    <form method="post" action="{{ url_for('leads.import_file') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field">
+        <span>Файл</span>
+        <input type="file" name="import_file" accept=".csv,.xlsx" required>
+      </label>
+      <label class="field">
+        <span>Группа-источник</span>
+        <input type="text" name="source_group" placeholder="Название группы Standoff 2">
+      </label>
+      <label class="field">
+        <span>Назначить менеджеру</span>
+        <select name="manager_id">
+          <option value="">🔄 Автоматически (round-robin)</option>
+          {% for m in managers %}
+          <option value="{{ m.id }}">👤 {{ m.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn btn-gold" type="submit">📄 Импортировать файл</button>
+    </form>
+  </div>
   {% endif %}
+</div>
+
+<!-- Фильтр -->
+<div class="card" style="margin-bottom:16px;">
+  <form method="get" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+    <label class="field" style="flex:1; min-width:200px;">
+      <span>Поиск</span>
+      <input type="text" name="q" value="{{ search }}" placeholder="Имя, vk_id, game_id...">
+    </label>
+    <label class="field">
+      <span>Статус</span>
+      <select name="status">
+        <option value="">Все</option>
+        {% for s in statuses %}
+        <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ status_labels[s] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn btn-gold" type="submit">Фильтровать</button>
+    {% if search or status_filter %}
+    <a href="{{ url_for('leads.index') }}" class="btn btn-soft">Сбросить</a>
+    {% endif %}
+    <a href="{{ url_for('leads.export_csv', status=status_filter, q=search) }}" class="btn btn-soft">⬇ CSV</a>
+    <a href="{{ url_for('leads.export_xlsx', status=status_filter, q=search) }}" class="btn btn-soft">⬇ Excel</a>
+  </form>
 </div>
 
 <!-- Список лидов -->
 <div class="card">
   <h2>📋 Список лидов</h2>
+
+  <form id="bulk-form" method="post" action="{{ url_for('leads.bulk_action') }}" style="display:contents;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" id="bulk-action-input">
+  </form>
+
+  <div id="bulk-toolbar" style="display:none; gap:10px; align-items:center; margin-bottom:14px; padding:10px 14px; background:var(--panel2); border-radius:10px; flex-wrap:wrap;">
+    <span id="bulk-count" style="font-weight:800;"></span>
+    <select id="bulk-action-select">
+      <option value="">Выбери действие...</option>
+      <optgroup label="Сменить статус">
+        {% for s in statuses %}
+        <option value="status:{{ s }}">→ {{ status_labels[s] }}</option>
+        {% endfor %}
+      </optgroup>
+      {% if is_admin %}
+      <optgroup label="Переназначить менеджеру">
+        {% for m in managers %}
+        <option value="reassign:{{ m.id }}">→ {{ m.name }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endif %}
+    </select>
+    <button type="button" class="btn btn-gold btn-sm" onclick="submitBulkAction()">Применить</button>
+  </div>
+
   {% if leads %}
   <table>
     <thead>
       <tr>
+        <th style="width:30px;"><input type="checkbox" id="select-all-leads"></th>
         <th>Имя / VK</th>
         <th>Статус</th>
         <th>Баланс</th>
@@ -147,6 +228,7 @@
     <tbody>
       {% for l in leads %}
       <tr>
+        <td><input type="checkbox" name="lead_ids" value="{{ l.id }}" form="bulk-form" class="lead-checkbox"></td>
         <td>
           <strong>{{ l.name or l.vk_id }}</strong>
           <br><span class="muted" style="font-size:11px;">{{ l.source_group }}</span>
@@ -203,6 +285,54 @@
             {% endfor %}
           </select>
           <button class="btn btn-soft btn-sm" type="submit">Обновить</button>
+        </form>
+      </div>
+
+      <!-- Теги -->
+      <div class="lead-modal-section">
+        <div class="lead-modal-section-title">🏷️ Теги</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          {% for tag in (l.tags | from_json) %}
+          <span style="display:inline-flex; align-items:center; gap:5px; background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:3px 10px; font-size:12px; font-weight:700;">
+            {{ tag }}
+            <form method="post" action="{{ url_for('leads.remove_tag', lead_id=l.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="tag" value="{{ tag }}">
+              <button type="submit" style="border:none; background:none; cursor:pointer; color:var(--muted); font-size:12px; padding:0;">✕</button>
+            </form>
+          </span>
+          {% else %}
+          <span class="muted" style="font-size:12px;">Тегов пока нет</span>
+          {% endfor %}
+        </div>
+        <form method="post" action="{{ url_for('leads.add_tag', lead_id=l.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="tag" placeholder="горячий, вернулся..." style="width:150px;" maxlength="24">
+          <button class="btn btn-soft btn-sm" type="submit">+ Тег</button>
+        </form>
+      </div>
+
+      <!-- Заметки -->
+      <div class="lead-modal-section">
+        <div class="lead-modal-section-title">📝 Заметки</div>
+        {% if l.notes_list %}
+        <div style="max-height:140px; overflow-y:auto; margin-bottom:8px; display:flex; flex-direction:column; gap:6px;">
+          {% for n in l.notes_list %}
+          <div style="background:var(--panel2); border-radius:8px; padding:6px 10px; font-size:12.5px;">
+            <div style="color:var(--text); font-weight:600;">{{ n.text }}</div>
+            <div style="color:var(--muted); font-size:10.5px; margin-top:2px;">{{ n.manager_name or 'система' }} · {{ n.created_at }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="muted" style="font-size:12px; margin-bottom:8px;">Заметок пока нет</div>
+        {% endif %}
+        <form method="post" action="{{ url_for('leads.add_note', lead_id=l.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div style="display:flex; gap:6px;">
+            <input type="text" name="text" placeholder="Добавить заметку..." style="flex:1;" maxlength="2000">
+            <button class="btn btn-soft btn-sm" type="submit">Добавить</button>
+          </div>
         </form>
       </div>
 
@@ -307,6 +437,37 @@ document.addEventListener('keydown', function(e) {
     document.body.style.overflow = '';
   }
 });
+
+/* ---- массовые действия над лидами ---- */
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.lead-checkbox:checked');
+  const toolbar = document.getElementById('bulk-toolbar');
+  const count = document.getElementById('bulk-count');
+  if (!toolbar) return;
+  if (checked.length > 0) {
+    toolbar.style.display = 'flex';
+    count.textContent = 'Выбрано: ' + checked.length;
+  } else {
+    toolbar.style.display = 'none';
+  }
+}
+document.querySelectorAll('.lead-checkbox').forEach(cb => cb.addEventListener('change', updateBulkToolbar));
+const selectAllBox = document.getElementById('select-all-leads');
+if (selectAllBox) {
+  selectAllBox.addEventListener('change', function () {
+    document.querySelectorAll('.lead-checkbox').forEach(cb => { cb.checked = selectAllBox.checked; });
+    updateBulkToolbar();
+  });
+}
+function submitBulkAction() {
+  const action = document.getElementById('bulk-action-select').value;
+  if (!action) { alert('Выбери действие из списка.'); return; }
+  const checked = document.querySelectorAll('.lead-checkbox:checked');
+  if (checked.length === 0) { alert('Не выбрано ни одного лида.'); return; }
+  if (!confirm('Применить действие к ' + checked.length + ' лидам?')) return;
+  document.getElementById('bulk-action-input').value = action;
+  document.getElementById('bulk-form').requestSubmit();
+}
 </script>
 
 <style>

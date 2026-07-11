@@ -11,7 +11,7 @@ from .db import query_one, execute, query_all
 bp = Blueprint("profile", __name__, url_prefix="/profile")
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-VK_RE = re.compile(r"^(https?://)?(www\.)?vk\.com/[a-zA-Z0-9_.]{2,50}/?$")
+VK_RE = re.compile(r"^(https?://)?(www\.)?vk\.(com|ru)/[a-zA-Z0-9_.]{2,50}/?$")
 GAME_ID_RE = re.compile(r"^[A-Za-z0-9]{3,20}$")
 FULLNAME_RE = re.compile(r"^[А-Яа-яA-Za-zЁё\-]+(\s[А-Яа-яA-Za-zЁё\-]+){1,3}$")
 
@@ -23,7 +23,7 @@ def _validate_profile_fields(full_name, email, vk_url, game_id):
     if not EMAIL_RE.match(email.strip()):
         errors.append("Некорректный формат email (пример: name@mail.ru).")
     if not VK_RE.match(vk_url.strip()):
-        errors.append("Ссылка на VK должна быть вида vk.com/имя_профиля.")
+        errors.append("Ссылка на VK должна быть вида vk.ru/имя_профиля.")
     if not GAME_ID_RE.match(game_id.strip()):
         errors.append("ID в Standoff 2 — только латинские буквы/цифры, от 3 до 20 символов.")
     return errors
@@ -54,8 +54,9 @@ def complete():
                 flash(e, "error")
             return render_template("profile_complete.html", manager=manager)
 
+        from .pii_encryption import encrypt_field
         execute("""UPDATE managers SET name=?, email=?, vk_url=?, game_id=?, profile_completed=1, consent_given_at=datetime('now')
-                   WHERE id=?""", (full_name.strip(), email.strip(), vk_url.strip(), game_id.strip(), manager_id))
+                   WHERE id=?""", (full_name.strip(), encrypt_field(email.strip()), vk_url.strip(), game_id.strip(), manager_id))
 
         from .referrals import try_resolve_claims_for_manager
         try_resolve_claims_for_manager(manager_id, vk_url.strip())
@@ -86,8 +87,9 @@ def settings():
                 for e in errors:
                     flash(e, "error")
             else:
+                from .pii_encryption import encrypt_field
                 execute("UPDATE managers SET name=?, email=?, vk_url=?, game_id=? WHERE id=?",
-                        (full_name.strip(), email.strip(), vk_url.strip(), game_id.strip(), manager_id))
+                        (full_name.strip(), encrypt_field(email.strip()), vk_url.strip(), game_id.strip(), manager_id))
 
                 from .referrals import try_resolve_claims_for_manager
                 try_resolve_claims_for_manager(manager_id, vk_url.strip())
@@ -143,3 +145,10 @@ def settings():
                           referrals_active=referrals_active,
                           puzzle_owned=puzzle_owned,
                           puzzles_completed=puzzles_completed)
+
+
+@bp.route("/dark-mode/toggle", methods=["POST"])
+@login_required
+def toggle_dark_mode():
+    execute("UPDATE managers SET dark_mode = 1 - dark_mode WHERE id=?", (session["manager_id"],))
+    return redirect(request.referrer or url_for("dashboard.index"))

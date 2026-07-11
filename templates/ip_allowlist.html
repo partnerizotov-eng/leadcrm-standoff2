@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}IP-ограничение админки{% endblock %}
+{% block content %}
+<h1>🛡️ IP-ограничение админки</h1>
+
+<div class="tip-warning" style="margin:16px 0; border-color:#F0455A;">
+  ⚠️ Пока список пуст — ограничений нет (как сейчас). Как только добавишь
+  первую запись, доступ к админке (эта страница, воронка, риски, менеджеры)
+  ограничится ТОЛЬКО перечисленными IP/подсетями. Убедись, что твой
+  текущий адрес в списке, иначе рискуешь заблокировать себя же.
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <form method="post" action="{{ url_for('admin.ip_allowlist_add') }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field"><span>IP или подсеть (CIDR)</span><input type="text" name="ip_or_cidr" placeholder="1.2.3.4 или 10.0.0.0/24" required></label>
+    <label class="field"><span>Заметка</span><input type="text" name="note" placeholder="напр. офис"></label>
+    <button class="btn btn-gold" type="submit">Добавить</button>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <thead><tr><th>IP / подсеть</th><th>Заметка</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="mono">{{ r.ip_or_cidr }}</td>
+        <td class="muted">{{ r.note }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.ip_allowlist_delete', aid=r.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm" type="submit">Удалить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">Список пуст — ограничений нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

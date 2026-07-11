@@ -17,6 +17,16 @@
           <span>Отправить всем менеджерам</span>
         </label>
 
+        <label>Или по сегменту (переопределяет выбор выше)</label>
+        <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center;">
+          <select name="segment" id="segment-select">
+            <option value="">Без сегмента — по чекбоксам ниже</option>
+            <option value="balance_gt">Баланс больше, чем...</option>
+            <option value="inactive_days">Неактивны N+ дней</option>
+          </select>
+          <input type="number" name="segment_value" id="segment-value" placeholder="напр. 50" style="width:120px; display:none;">
+        </div>
+
         <div id="manager-select-list" class="manager-select-list">
           {% for m in managers %}
             <label class="manager-checkbox-row">
@@ -40,12 +50,12 @@
 .all-checkbox-row { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
 .all-checkbox-row input { width:auto; }
 .manager-select-list {
-  max-height: 240px; overflow-y: auto; background:#0f1115;
-  border:1px solid #262b36; border-radius:8px; padding:10px; margin-bottom:14px;
+  max-height: 240px; overflow-y: auto; background:var(--panel2);
+  border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:14px;
 }
 .manager-checkbox-row { display:flex; align-items:center; gap:8px; padding:6px 0; }
 .manager-checkbox-row input { width:auto; }
-.muted-small { color:#8a90a2; font-size:12px; }
+.muted-small { color:var(--muted); font-size:12px; }
 </style>
 
 <script>
@@ -61,6 +71,9 @@ document.getElementById('send-all-checkbox').addEventListener('change', function
     list.style.pointerEvents = 'auto';
     checkboxes.forEach(cb => cb.disabled = false);
   }
+});
+document.getElementById('segment-select').addEventListener('change', function() {
+  document.getElementById('segment-value').style.display = this.value ? 'inline-block' : 'none';
 });
 </script>
 {% endblock %}

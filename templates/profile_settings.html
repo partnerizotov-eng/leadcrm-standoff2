@@ -96,7 +96,7 @@
           <span>ФИО</span>
         </label>
         <label class="float-field">
-          <input type="email" name="email" value="{{ manager.email or '' }}" placeholder=" " required>
+          <input type="email" name="email" value="{{ manager.email|decrypt_pii or '' }}" placeholder=" " required>
           <span>Email</span>
         </label>
         <label class="float-field">

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Резервные коды{% endblock %}
+{% block content %}
+<h1>🔑 Резервные коды</h1>
+
+<div class="tip-warning" style="margin:16px 0; border-color:#FFC23D;">
+  ⚠️ Сохрани эти коды прямо сейчас — они показываются только один раз.
+  Каждый код можно использовать один раз вместо кода из приложения, если
+  потеряешь доступ к телефону с аутентификатором.
+</div>
+
+<div class="card">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+    {% for code in codes %}
+    <code style="background:var(--panel2); padding:10px 14px; border-radius:8px; font-size:16px; text-align:center; border:1px solid var(--border); letter-spacing:2px;">{{ code }}</code>
+    {% endfor %}
+  </div>
+  <a href="{{ url_for('totp_setup.index') }}" class="btn btn-gold">Я сохранил коды — продолжить</a>
+</div>
+{% endblock %}

@@ -4,8 +4,8 @@
   "description": "Управление лидами и розыгрышами Standoff 2",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1115",
-  "theme_color": "#6c8cff",
+  "background_color": "#FFFDF7",
+  "theme_color": "#2EC5FF",
   "icons": [
     {
       "src": "/static/icons/icon-192.png",

@@ -8,10 +8,11 @@
   Перед каждым <code>git push</code> — обязательно жми «Скачать» на самом свежем файле ниже и сохраняй его себе на компьютер.
 </div>
 
-<form method="post" action="{{ url_for('db_export.backups_create_now') }}" style="margin-bottom:16px;">
+<form method="post" action="{{ url_for('db_export.backups_create_now') }}" style="margin-bottom:16px; display:inline-block;">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <button class="btn btn-gold" type="submit">📦 Создать бэкап прямо сейчас</button>
 </form>
+<a href="{{ url_for('db_export.backups_restore_form') }}" class="btn btn-soft" style="margin-bottom:16px;">♻️ Восстановить из файла</a>
 
 <div class="card">
   {% if backups %}

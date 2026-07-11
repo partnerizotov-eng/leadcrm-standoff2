@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Двухфакторная аутентификация{% endblock %}
+{% block content %}
+<h1>🔐 Двухфакторная аутентификация (2FA)</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="tip-warning" style="margin-bottom:16px; {% if category == 'error' %}border-color:#F0455A;{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% if enabled %}
+<div class="card" style="border-color:#7ED957; margin-bottom:16px;">
+  <h2 style="margin-top:0;">✅ 2FA включена</h2>
+  <p class="muted">При каждом входе, кроме пароля, потребуется код из приложения-аутентификатора.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Отключить 2FA</h2>
+  <p class="muted">Потребуется текущий пароль — на случай, если кто-то получит доступ к уже открытой сессии.</p>
+  <form method="post" action="{{ url_for('totp_setup.disable') }}" style="max-width:320px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field">
+      <span>Текущий пароль</span>
+      <input type="password" name="password" required>
+    </label>
+    <button class="btn btn-gold" type="submit" style="background:#F0455A; border-color:#F0455A;">Отключить 2FA</button>
+  </form>
+</div>
+
+{% elif setting_up %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">Шаг 1 · Добавь аккаунт в приложение</h2>
+  <p class="muted">Google Authenticator, Authy, 1Password и подобные — подойдёт любое.</p>
+
+  <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; margin:16px 0;">
+    <img src="{{ url_for('totp_setup.qr_code') }}" alt="QR-код" style="width:200px; height:200px; border:2px solid var(--border); border-radius:12px;"
+         onerror="this.style.display='none'; document.getElementById('qr-fallback-note').style.display='block';">
+    <div style="flex:1; min-width:220px;">
+      <div id="qr-fallback-note" style="display:none; margin-bottom:10px; font-size:12.5px; color:var(--muted);">
+        QR не сгенерировался (нужен пакет <code>qrcode</code> на сервере) — просто введи секрет вручную, это тоже полностью рабочий способ.
+      </div>
+      <p style="font-weight:700; margin-bottom:4px;">Или введи секрет вручную:</p>
+      <code style="background:var(--panel2); padding:8px 12px; border-radius:8px; display:inline-block; font-size:14px; letter-spacing:1px; border:1px solid var(--border);">{{ secret }}</code>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Шаг 2 · Подтверди код</h2>
+  <p class="muted">Введи 6-значный код, который сейчас показывает приложение — это докажет, что всё настроено правильно.</p>
+  <form method="post" style="max-width:280px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field">
+      <span>Код из приложения</span>
+      <input type="text" name="code" inputmode="numeric" placeholder="123456" required autofocus
+             style="letter-spacing:3px; font-size:18px; text-align:center;">
+    </label>
+    <button class="btn btn-gold" type="submit">Включить 2FA</button>
+  </form>
+</div>
+
+{% else %}
+<div class="card">
+  <h2 style="margin-top:0;">2FA пока не включена</h2>
+  <p class="muted">Рекомендуем включить — через админку проходят реальные деньги (выводы, балансы),
+  это самая чувствительная часть системы.</p>
+  <a href="{{ url_for('totp_setup.setup') }}" class="btn btn-gold">Настроить 2FA</a>
+</div>
+{% endif %}
+{% endblock %}

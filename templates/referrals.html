@@ -16,7 +16,7 @@
     <div class="ref-claim-title">Отправь бутылку с запиской</div>
     <form method="post" action="{{ url_for('referrals.claim') }}" class="ref-claim-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="text" name="vk_url" placeholder="vk.com/имя_профиля" required>
+      <input type="text" name="vk_url" placeholder="vk.ru/имя_профиля" required>
       <button class="btn btn-primary" type="submit">Привязать реферала</button>
     </form>
     <div class="ref-claim-hint">

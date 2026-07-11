@@ -58,10 +58,23 @@
       <div class="chat-input-row">
         <button type="button" id="attach-btn" title="Прикрепить фото/видео">📎</button>
         <button type="button" id="record-btn" title="Записать аудио">🎤</button>
+        {% if canned_responses %}
+        <button type="button" id="canned-btn" title="Шпаргалка быстрых ответов">💬</button>
+        {% endif %}
         <textarea name="message" placeholder="Написать сообщение..." rows="1" id="chat-text"></textarea>
         <input type="file" name="attachment" id="attachment-input" accept="image/*,video/*,audio/*" style="display:none;">
         <button type="submit" class="chat-send-btn" title="Отправить">➤</button>
       </div>
+      {% if canned_responses %}
+      <div id="canned-list" style="display:none; max-height:180px; overflow-y:auto; margin-top:8px; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:6px;">
+        {% for c in canned_responses %}
+        <div class="canned-item" data-text="{{ c.text }}" style="padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px;">
+          <strong>{{ c.title }}</strong>
+          <div class="muted" style="font-size:11.5px;">{{ c.text[:80] }}{% if c.text|length > 80 %}...{% endif %}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
       <div id="recording-indicator" style="display:none;">🔴 Идёт запись... <button type="button" id="stop-record-btn">Остановить</button></div>
       <div id="mic-error" class="mic-error" style="display:none;"></div>
     </form>
@@ -82,7 +95,7 @@
 .status-open { background: rgba(108,140,255,0.15); color: #6c8cff; }
 .status-closed { background: rgba(62,207,142,0.15); color: #3ecf8e; }
 
-.ticket-chat-shell { background: linear-gradient(180deg, #14161d, #101218); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.ticket-chat-shell { background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
 
 .chat-box { display: flex; flex-direction: column; gap: 14px; max-height: 520px; overflow-y: auto; padding: 20px; }
 .chat-row { display: flex; gap: 10px; max-width: 82%; }
@@ -92,7 +105,7 @@
 .chat-row-mine .chat-bubble-wrap { align-items: flex-end; }
 .chat-sender { font-size: 12px; color: var(--muted); margin-bottom: 4px; padding-left: 2px; }
 .chat-bubble { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; }
-.chat-bubble-theirs { background: #1c2029; border-bottom-left-radius: 4px; color: var(--text); }
+.chat-bubble-theirs { background: var(--panel2); border: 1px solid var(--border); border-bottom-left-radius: 4px; color: var(--text); }
 .chat-bubble-mine { background: linear-gradient(135deg, #6C8CFF, #5470E0); border-bottom-right-radius: 4px; color: #fff; }
 .chat-bubble p { margin: 0; }
 .chat-time { font-size: 10.5px; color: var(--muted); margin-top: 4px; padding: 0 4px; }
@@ -100,16 +113,16 @@
 .chat-attachment-video { max-width: 260px; border-radius: 10px; display: block; }
 .chat-attachment-audio { width: 220px; }
 
-.chat-input-form { border-top: 1px solid var(--border); padding: 14px; background: #14161d; }
+.chat-input-form { border-top: 1px solid var(--border); padding: 14px; background: var(--panel2); }
 .chat-input-row { display: flex; gap: 8px; align-items: center; }
 .chat-input-row textarea { flex: 1; resize: none; min-height: 42px; max-height: 120px; border-radius: 20px !important; padding: 10px 16px !important; }
-#attach-btn, #record-btn { background: #1b1f29; border: 1px solid var(--border); width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 16px; flex-shrink: 0; display:flex; align-items:center; justify-content:center; }
+#attach-btn, #record-btn { background: var(--panel); border: 1px solid var(--border); width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 16px; flex-shrink: 0; display:flex; align-items:center; justify-content:center; }
 #record-btn.recording { background: #e56b6b; color: white; border-color: #e56b6b; }
 .chat-send-btn { background: linear-gradient(135deg, #6C8CFF, #5470E0); color: #fff; border: none; width: 42px; height: 42px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0; }
-.attachment-preview { display:flex; justify-content:space-between; align-items:center; background:#1b1f29; padding:8px 12px; border-radius:10px; margin-bottom:8px; font-size:13px; color:var(--muted); }
+.attachment-preview { display:flex; justify-content:space-between; align-items:center; background:var(--panel); border:1px solid var(--border); padding:8px 12px; border-radius:10px; margin-bottom:8px; font-size:13px; color:var(--muted); }
 .attachment-preview button { background:none; border:none; color:#e56b6b; cursor:pointer; font-size:16px; }
 #recording-indicator { margin-top:8px; color:#e56b6b; font-size:13px; }
-#recording-indicator button { margin-left:8px; background:#262b36; border:none; color:#e8e9ee; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px; }
+#recording-indicator button { margin-left:8px; background:var(--panel); border:1px solid var(--border); color:var(--text); padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px; }
 .mic-error { margin-top:8px; color:#e56b6b; font-size:12px; background:rgba(229,107,107,0.08); border:1px solid rgba(229,107,107,0.3); border-radius:6px; padding:8px 10px; }
 .close-ticket-form { padding: 14px; border-top: 1px solid var(--border); }
 
@@ -120,6 +133,24 @@
 (function() {
   const chatBox = document.getElementById('chat-box');
   if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+
+  const cannedBtn = document.getElementById('canned-btn');
+  const cannedList = document.getElementById('canned-list');
+  if (cannedBtn && cannedList) {
+    cannedBtn.addEventListener('click', () => {
+      cannedList.style.display = cannedList.style.display === 'none' ? 'block' : 'none';
+    });
+    cannedList.querySelectorAll('.canned-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const chatText = document.getElementById('chat-text');
+        chatText.value = el.dataset.text;
+        chatText.focus();
+        cannedList.style.display = 'none';
+      });
+      el.addEventListener('mouseenter', () => { el.style.background = 'var(--panel2)'; });
+      el.addEventListener('mouseleave', () => { el.style.background = 'transparent'; });
+    });
+  }
 
   const fileInput = document.getElementById('attachment-input');
   const attachBtn = document.getElementById('attach-btn');

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Активные сессии{% endblock %}
+{% block content %}
+<h1>🖥️ Активные сессии</h1>
+<div class="card">
+  <table>
+    <thead><tr><th>Менеджер</th><th>IP</th><th>User-Agent</th><th>Начало</th><th>Активность</th><th></th></tr></thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr {% if s.session_id == my_session_uid %}style="background:rgba(46,197,255,.08);"{% endif %}>
+        <td>{{ s.manager_name }}{% if s.session_id == my_session_uid %} <span class="muted" style="font-size:11px;">(это ты)</span>{% endif %}</td>
+        <td class="mono">{{ s.ip_address or '—' }}</td>
+        <td class="muted" style="font-size:11px; max-width:200px; overflow:hidden; text-overflow:ellipsis;">{{ s.user_agent or '—' }}</td>
+        <td class="muted">{{ s.created_at }}</td>
+        <td class="muted">{{ s.last_seen_at }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.sessions_revoke', sid=s.id) }}"
+                onsubmit="return confirm('Завершить эту сессию? Пользователь сразу будет разлогинен.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger btn-sm" type="submit">Завершить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">Активных сессий нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

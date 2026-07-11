@@ -42,6 +42,11 @@ def create():
         return redirect(url_for("support_tickets.index"))
 
     ticket_id = create_ticket(manager_id, subject, message)
+    try:
+        from .email_notify import notify_admin_email
+        notify_admin_email(f"Новый тикет: {subject}", f"{message}\n\n(тикет #{ticket_id})")
+    except Exception:
+        pass
     flash("✅ Чат с поддержкой открыт.", "success")
     return redirect(url_for("support_tickets.detail", ticket_id=ticket_id))
 
@@ -66,10 +71,12 @@ def detail(ticket_id):
         return redirect(url_for("support_tickets.index"))
 
     messages = get_ticket_messages(ticket_id)
+    canned = query_all("SELECT id, title, text FROM canned_responses ORDER BY title")
 
     return render_template("support_ticket_detail.html",
                           ticket=dict(ticket),
                           messages=[dict(m) for m in messages],
+                          canned_responses=[dict(c) for c in canned],
                           is_admin=(role == "admin"))
 
 

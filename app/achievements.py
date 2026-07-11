@@ -8,6 +8,20 @@ bp = Blueprint("achievements", __name__, url_prefix="/achievements")
 
 # Определение всех достижений
 ACHIEVEMENTS = {
+    "trainer_passed": {
+        "id": "trainer_passed",
+        "name": "🎯 Аттестован",
+        "description": "Пройден тренажёр менеджера (450+/500)",
+        "icon": "🎓",
+        "condition": lambda stats: bool(stats.get("trainer_passed"))
+    },
+    "trainer_ace": {
+        "id": "trainer_ace",
+        "name": "💯 Идеальный результат",
+        "description": "В тренажёре набрано 490+ из 500",
+        "icon": "🏅",
+        "condition": lambda stats: (stats.get("trainer_score") or 0) >= 490
+    },
     "first_lead": {
         "id": "first_lead",
         "name": "🥇 Первый лид",
@@ -128,6 +142,8 @@ def check_achievements(manager_id):
     stats = query_one("""
         SELECT 
             m.total_earned as total_earned,
+            m.trainer_score as trainer_score,
+            m.trainer_passed as trainer_passed,
             COUNT(DISTINCT l.id) as total_leads,
             COUNT(DISTINCT s.id) as total_submissions,
             COUNT(DISTINCT CASE WHEN s.status = 'approved' THEN s.id END) as approved_submissions,

@@ -49,7 +49,7 @@
     </div>
   </div>
   <div style="text-align:center;margin-top:12px;">
-    <a href="https://vk.com/im/channels/-239908136" target="_blank" class="btn btn-primary btn-sm">
+    <a href="https://vk.ru/im/channels/-239908136" target="_blank" class="btn btn-primary btn-sm">
       📢 Перейти в канал
     </a>
   </div>
@@ -81,7 +81,36 @@
   {% endif %}
 </div>
 
+{% if not is_admin and (not current_manager.trainer_passed or not my_stats or my_stats.leads_total == 0) %}
+<div class="card" style="border-color: var(--accent); margin-bottom:16px;">
+  <h2 style="margin-top:0;">🚀 Начало работы</h2>
+  <div style="display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:18px;">✅</span>
+      <span>Профиль заполнен</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:18px;">{{ '✅' if current_manager.trainer_passed else '⬜' }}</span>
+      {% if current_manager.trainer_passed %}
+      <span>Тренажёр пройден{% if current_manager.trainer_score %} ({{ current_manager.trainer_score }}/500){% endif %}</span>
+      {% else %}
+      <a href="{{ url_for('simulator.index') }}" style="font-weight:800;">Пройти тренажёр (нужно набрать 450+/500)</a>
+      {% endif %}
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:18px;">{{ '✅' if my_stats and my_stats.leads_total > 0 else '⬜' }}</span>
+      {% if my_stats and my_stats.leads_total > 0 %}
+      <span>Первый лид получен</span>
+      {% else %}
+      <span class="muted">Получить первого лида{% if not current_manager.trainer_passed %} — сначала пройди тренажёр{% endif %}</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Воронка -->
+{% if widgets.funnel %}
 <div class="card" id="tour-funnel">
   <h2>Воронка</h2>
   {% for s in statuses %}
@@ -96,9 +125,10 @@
   </div>
   {% endfor %}
 </div>
+{% endif %}
 
 <!-- Рейтинг -->
-{% if is_admin and leaderboard %}
+{% if is_admin and leaderboard and widgets.leaderboard %}
 <div class="card" id="tour-leaderboard">
   <h2>🏆 Рейтинг менеджеров</h2>
   <table>
@@ -124,11 +154,12 @@
 </div>
 {% endif %}
 
-<!-- templates/dashboard.html - добавляем графики -->
+<!-- templates/dashboard.html - графики -->
+{% if widgets.activity_chart %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <div class="card" style="margin-top:16px;">
-    <h2>📈 Динамика активности</h2>
+    <h2>📈 Динамика активности (7 дней)</h2>
     <canvas id="activityChart" height="100"></canvas>
 </div>
 
@@ -140,12 +171,14 @@ fetch('/api/v1/stats')
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                labels: data.labels,
                 datasets: [{
                     label: 'Новые лиды',
-                    data: [12, 19, 3, 5, 2, 3, 7],
-                    borderColor: '#6c8cff',
-                    tension: 0.1
+                    data: data.values,
+                    borderColor: '#2EC5FF',
+                    backgroundColor: 'rgba(46,197,255,0.12)',
+                    fill: true,
+                    tension: 0.25
                 }]
             },
             options: {
@@ -153,23 +186,43 @@ fetch('/api/v1/stats')
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        labels: { color: '#e8e9ee' }
+                        labels: { color: '#2B2250' }
                     }
                 },
                 scales: {
                     y: {
-                        ticks: { color: '#8a90a2' },
-                        grid: { color: 'rgba(255,255,255,0.05)' }
+                        ticks: { color: '#8494B2' },
+                        grid: { color: 'rgba(43,34,80,0.08)' },
+                        beginAtZero: true
                     },
                     x: {
-                        ticks: { color: '#8a90a2' },
-                        grid: { color: 'rgba(255,255,255,0.05)' }
+                        ticks: { color: '#8494B2' },
+                        grid: { color: 'rgba(43,34,80,0.08)' }
                     }
                 }
             }
         });
     });
 </script>
+{% endif %}
+
+<details class="card" style="margin-top:16px;">
+  <summary style="cursor:pointer; font-weight:800; color:var(--muted); list-style:none;">⚙️ Настроить виджеты дашборда</summary>
+  <form method="post" action="{{ url_for('dashboard.save_widget_prefs') }}" style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+      <input type="checkbox" name="w_funnel" value="1" {% if widgets.funnel %}checked{% endif %}> Воронка
+    </label>
+    <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+      <input type="checkbox" name="w_leaderboard" value="1" {% if widgets.leaderboard %}checked{% endif %}> Рейтинг/лидерборд
+    </label>
+    <label style="display:flex; align-items:center; gap:8px; font-weight:600;">
+      <input type="checkbox" name="w_activity_chart" value="1" {% if widgets.activity_chart %}checked{% endif %}> График динамики
+    </label>
+    <button class="btn btn-soft btn-sm" type="submit" style="width:fit-content;">Сохранить</button>
+  </form>
+</details>
+
 {% if is_admin and total_debt is defined %}
 <div class="card" style="border-color:var(--gold);">
   <h2>💰 Финансовая сводка</h2>

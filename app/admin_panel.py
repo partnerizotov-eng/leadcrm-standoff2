@@ -6,6 +6,7 @@ from .db import query_all, query_one, execute
 from .admin_balance import add_balance, subtract_balance, get_balance_logs
 from .admin_players import add_player_balance, get_player_balance_logs
 from .admin_leads import delete_lead, get_deleted_leads, restore_lead
+from .gdpr_erasure import find_lead_for_erasure, erase_lead_data
 from .admin_support import send_support_message, get_ticket_messages, close_ticket, create_ticket
 from .admin_payments import (
     upload_payment_proof, upload_top_player_photo, 
@@ -350,12 +351,164 @@ def messaging_send():
     message = request.form.get('message', '').strip()
     send_to_all = request.form.get('send_to_all')
     selected_ids = request.form.getlist('manager_ids')
+    segment = request.form.get('segment', '')
 
     if not message:
         flash('Сообщение не может быть пустым.', 'error')
         return redirect(url_for('admin.messaging'))
 
-    ids = None if send_to_all else [int(i) for i in selected_ids if i.isdigit()]
+    if segment == 'balance_gt':
+        threshold = request.form.get('segment_value', type=float) or 0
+        rows = query_all("SELECT id FROM managers WHERE role='manager' AND balance > ?", (threshold,))
+        ids = [r['id'] for r in rows]
+    elif segment == 'inactive_days':
+        days = request.form.get('segment_value', type=int) or 7
+        rows = query_all(
+            "SELECT id FROM managers WHERE role='manager' AND "
+            "(session_started_at IS NULL OR session_started_at < datetime('now', ?))",
+            (f'-{days} days',))
+        ids = [r['id'] for r in rows]
+    else:
+        ids = None if send_to_all else [int(i) for i in selected_ids if i.isdigit()]
+
     count = send_mass_message(ids, message)
     flash(f'✅ Уведомление отправлено {count} менеджер(ам).', 'success')
     return redirect(url_for('admin.messaging'))
+
+
+# ==================== 152-ФЗ · УДАЛЕНИЕ ПЕРСОНАЛЬНЫХ ДАННЫХ ====================
+
+@admin_bp.route('/gdpr-erase')
+@admin_required
+def gdpr_erase_form():
+    query = request.args.get('q', '').strip()
+    results = find_lead_for_erasure(query) if query else []
+    return render_template('gdpr_erase.html', query=query, results=results)
+
+
+@admin_bp.route('/gdpr-erase/<int:lead_id>', methods=['POST'])
+@admin_required
+def gdpr_erase_confirm(lead_id):
+    reason = request.form.get('reason', '').strip()
+    confirmed = request.form.get('confirm') == 'yes'
+    if not confirmed:
+        flash('Нужно подтвердить удаление — отметь чекбокс.', 'error')
+        return redirect(url_for('admin.gdpr_erase_form'))
+
+    ok, message = erase_lead_data(lead_id, session['manager_id'], reason)
+    flash(('✅ ' if ok else '❌ ') + message, 'success' if ok else 'error')
+    return redirect(url_for('admin.gdpr_erase_form'))
+
+
+# ==================== Шпаргалка быстрых ответов (тикеты) ====================
+
+@admin_bp.route('/canned-responses')
+@admin_required
+def canned_responses():
+    from .db import query_all
+    items = query_all("SELECT * FROM canned_responses ORDER BY title")
+    return render_template('canned_responses.html', items=[dict(i) for i in items])
+
+
+@admin_bp.route('/canned-responses/add', methods=['POST'])
+@admin_required
+def canned_responses_add():
+    from .db import execute
+    title = request.form.get('title', '').strip()
+    text = request.form.get('text', '').strip()
+    if title and text:
+        execute("INSERT INTO canned_responses (title, text, created_by) VALUES (?, ?, ?)",
+                (title, text, session['manager_id']))
+        flash('✅ Добавлено.', 'success')
+    return redirect(url_for('admin.canned_responses'))
+
+
+@admin_bp.route('/canned-responses/<int:cid>/delete', methods=['POST'])
+@admin_required
+def canned_responses_delete(cid):
+    from .db import execute
+    execute("DELETE FROM canned_responses WHERE id=?", (cid,))
+    flash('Удалено.', 'success')
+    return redirect(url_for('admin.canned_responses'))
+
+
+# ==================== Активные сессии ====================
+
+@admin_bp.route('/sessions')
+@admin_required
+def sessions():
+    from .db import query_all
+    rows = query_all("""
+        SELECT s.*, m.name manager_name FROM active_sessions s
+        JOIN managers m ON m.id = s.manager_id
+        WHERE s.revoked = 0
+        ORDER BY s.last_seen_at DESC LIMIT 100
+    """)
+    return render_template('sessions.html', sessions=[dict(r) for r in rows],
+                           my_session_uid=session.get('session_uid'))
+
+
+@admin_bp.route('/sessions/<int:sid>/revoke', methods=['POST'])
+@admin_required
+def sessions_revoke(sid):
+    from .db import execute
+    execute("UPDATE active_sessions SET revoked=1 WHERE id=?", (sid,))
+    flash('✅ Сессия принудительно завершена.', 'success')
+    return redirect(url_for('admin.sessions'))
+
+
+# ==================== Журнал входов ====================
+
+@admin_bp.route('/login-log')
+@admin_required
+def login_log():
+    from .db import query_all
+    rows = query_all("""
+        SELECT l.*, m.name manager_name FROM login_log l
+        LEFT JOIN managers m ON m.id = l.manager_id
+        ORDER BY l.id DESC LIMIT 200
+    """)
+    return render_template('login_log.html', rows=[dict(r) for r in rows])
+
+
+# ==================== IP-allowlist для админки ====================
+
+@admin_bp.route('/ip-allowlist')
+@admin_required
+def ip_allowlist():
+    from .db import query_all
+    rows = query_all("SELECT * FROM admin_ip_allowlist ORDER BY id")
+    return render_template('ip_allowlist.html', rows=[dict(r) for r in rows])
+
+
+@admin_bp.route('/ip-allowlist/add', methods=['POST'])
+@admin_required
+def ip_allowlist_add():
+    from .db import execute
+    ip_or_cidr = request.form.get('ip_or_cidr', '').strip()
+    note = request.form.get('note', '').strip()
+    if ip_or_cidr:
+        try:
+            execute("INSERT INTO admin_ip_allowlist (ip_or_cidr, note) VALUES (?, ?)", (ip_or_cidr, note))
+            flash('✅ Добавлено. ВАЖНО: как только в списке появится первая запись, доступ к админке ограничится только этими IP — проверь, что твой текущий IP в списке!', 'success')
+        except Exception:
+            flash('Такой адрес уже есть в списке.', 'error')
+    return redirect(url_for('admin.ip_allowlist'))
+
+
+@admin_bp.route('/ip-allowlist/<int:aid>/delete', methods=['POST'])
+@admin_required
+def ip_allowlist_delete(aid):
+    from .db import execute
+    execute("DELETE FROM admin_ip_allowlist WHERE id=?", (aid,))
+    flash('Удалено.', 'success')
+    return redirect(url_for('admin.ip_allowlist'))
+
+
+# ==================== Rate-limit дашборд ====================
+
+@admin_bp.route('/rate-limits')
+@admin_required
+def rate_limits():
+    from .security import get_rate_limit_snapshot
+    return render_template('rate_limits.html', rows=get_rate_limit_snapshot())

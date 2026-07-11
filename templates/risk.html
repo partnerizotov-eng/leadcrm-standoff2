@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Риски и дубли{% endblock %}
+{% block content %}
+<h1>🚨 Риски и дубли</h1>
+
+<div style="margin-bottom:12px;">
+  {% if telegram_configured %}
+  <form method="post" action="{{ url_for('risk.send_telegram') }}" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-gold btn-sm" type="submit">📤 Отправить сводку в Telegram</button>
+  </form>
+  {% else %}
+  <span class="muted" style="font-size:12.5px;">Telegram не настроен — задай <code>TELEGRAM_BOT_TOKEN</code> и <code>TELEGRAM_CHAT_ID</code> в <code>.env</code>, чтобы получать сводки автоматически и по кнопке.</span>
+  {% endif %}
+</div>
+
+<div class="tip-warning" style="margin:16px 0; line-height:1.5; font-size:13px;">
+  ℹ️ Это набор эвристик, не готовые обвинения. Полноценный антифрод потребовал бы
+  IP/девайс-трекинга, которого в проекте пока нет — здесь только то, что можно
+  вывести из уже имеющихся данных. Каждый пункт — повод посмотреть вручную.
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">📷 Переиспользованные скриншоты</h2>
+  <p class="muted">Один и тот же файл использован в нескольких заявках — сильный сигнал.</p>
+  {% if report.duplicate_screenshots %}
+    {% for group in report.duplicate_screenshots %}
+    <div style="border:2px solid #F0455A; border-radius:10px; padding:10px; margin-bottom:8px;">
+      {% for item in group %}
+      <div style="font-size:13px; padding:2px 0;">
+        Заявка #{{ item.id }} · лид «{{ item.lead_name or '—' }}» · менеджер {{ item.manager_name or '—' }} · {{ item.created_at }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}<p class="muted">Ничего не найдено.</p>{% endif %}
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">👤 Лиды-почти-дубли</h2>
+  <p class="muted">Тот же vk_id в другом регистре — вероятно, один и тот же человек добавлен дважды.</p>
+  {% if report.case_duplicate_leads %}
+    {% for group in report.case_duplicate_leads %}
+    <div style="border:2px solid #FFC23D; border-radius:10px; padding:10px; margin-bottom:8px;">
+      {% for item in group %}
+      <div style="font-size:13px; padding:2px 0;">
+        Лид #{{ item.id }} · <code>{{ item.vk_id }}</code> · {{ item.name or '—' }} · найден {{ item.found_at }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}<p class="muted">Ничего не найдено.</p>{% endif %}
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">📈 Аномальный % одобрения</h2>
+  <p class="muted">Менеджеры, чей % одобренных заявок заметно выше среднего.</p>
+  {% if report.approval_outliers %}
+  <table>
+    <thead><tr><th>Менеджер</th><th>Заявок</th><th>Одобрено</th><th>%</th></tr></thead>
+    <tbody>
+      {% for r in report.approval_outliers %}
+      <tr><td>{{ r.name }}</td><td>{{ r.total }}</td><td>{{ r.approved }}</td><td>{{ r.approval_pct }}%</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Ничего не найдено.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">⚡ Всплески добавления лидов</h2>
+  <p class="muted">Много лидов за короткое окно времени — похоже на скрипт, а не ручной подбор.</p>
+  {% if report.rapid_bursts %}
+  <table>
+    <thead><tr><th>Менеджер</th><th>Лидов</th><th>За</th><th>Когда</th></tr></thead>
+    <tbody>
+      {% for b in report.rapid_bursts %}
+      <tr><td>{{ b.name }}</td><td>{{ b.count }}</td><td>{{ b.window_minutes }} мин</td><td>{{ b['from'] }} – {{ b['to'] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">Ничего не найдено.</p>{% endif %}
+</div>
+{% endblock %}

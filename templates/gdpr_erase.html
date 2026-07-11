@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Удаление персональных данных (152-ФЗ){% endblock %}
+{% block content %}
+<h1>🗑️ Удаление данных лида по запросу (152-ФЗ)</h1>
+
+<div class="tip-warning" style="margin:16px 0; line-height:1.5;">
+  ⚠️ Это НЕ то же самое, что обычное удаление лида (то — с архивом и возможностью
+  восстановить). Здесь удаление <b>безвозвратно</b> и не сохраняет ссылку/имя
+  человека даже в логах — так и должно работать право на забвение. Используй это
+  только по прямому запросу человека удалить его данные.
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="tip-warning" style="margin-bottom:16px; {% if category == 'error' %}border-color:#F0455A;{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card" style="margin-bottom:16px;">
+  <form method="get">
+    <label style="display:block; font-weight:700; margin-bottom:8px;">Найти лида — ссылка VK, id или имя</label>
+    <div style="display:flex; gap:8px;">
+      <input type="text" name="q" value="{{ query }}" placeholder="vk.ru/id123, имя..." style="flex:1;">
+      <button class="btn btn-gold" type="submit">Найти</button>
+    </div>
+  </form>
+</div>
+
+{% if query %}
+  {% if results %}
+    <div class="card">
+      <table>
+        <thead><tr><th>Имя</th><th>VK</th><th>Статус</th><th>Найден</th><th></th></tr></thead>
+        <tbody>
+          {% for lead in results %}
+          <tr>
+            <td>{{ lead.name or '—' }}</td>
+            <td><code>{{ lead.vk_id }}</code></td>
+            <td>{{ lead.status }}</td>
+            <td>{{ lead.found_at }}</td>
+            <td>
+              <button class="btn btn-soft btn-sm" type="button"
+                onclick="document.getElementById('erase-{{ lead.id }}').classList.toggle('sim-hidden')">
+                Удалить безвозвратно
+              </button>
+            </td>
+          </tr>
+          <tr id="erase-{{ lead.id }}" class="sim-hidden">
+            <td colspan="5">
+              <form method="post" action="{{ url_for('admin.gdpr_erase_confirm', lead_id=lead.id) }}"
+                    style="background:rgba(255,79,110,.08); border:2px solid #F0455A; border-radius:12px; padding:12px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <p style="font-weight:700; margin-top:0;">
+                  Удалить безвозвратно лида «{{ lead.name or lead.vk_id }}» и все связанные записи
+                  (заявки, начисления, историю участия)? Отменить это будет нельзя.
+                </p>
+                <label style="display:block; margin-bottom:8px;">
+                  Причина (необязательно, для аудит-лога — сам vk_id/имя туда не попадёт):
+                  <input type="text" name="reason" style="width:100%; margin-top:4px;" placeholder="запрос пользователя на удаление данных">
+                </label>
+                <label style="display:flex; align-items:flex-start; gap:8px; margin-bottom:10px; font-weight:600;">
+                  <input type="checkbox" name="confirm" value="yes" required style="margin-top:3px;">
+                  <span>Понимаю, что это необратимо, и подтверждаю удаление.</span>
+                </label>
+                <button class="btn btn-gold" type="submit" style="background:#F0455A; border-color:#F0455A;">
+                  Удалить безвозвратно
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">Ничего не найдено по запросу «{{ query }}».</p>
+  {% endif %}
+{% endif %}
+
+<style>.sim-hidden { display: none; }</style>
+{% endblock %}

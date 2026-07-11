@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Штрафы и бонусы{% endblock %}
+{% block content %}
+<h1>⚖️ Штрафы и бонусы</h1>
+
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="margin-top:0;">Новая корректировка</h2>
+  <form method="post" action="{{ url_for('team.adjustments_add') }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field"><span>Менеджер</span>
+      <select name="manager_id" required>
+        {% for m in managers %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="field"><span>Сумма (+ бонус / − штраф)</span><input type="number" step="0.01" name="amount" required style="width:120px;"></label>
+    <label class="field"><span>Тип</span>
+      <select name="kind">
+        <option value="bonus">Бонус</option>
+        <option value="penalty">Штраф</option>
+        <option value="other">Другое</option>
+      </select>
+    </label>
+    <label class="field" style="flex:1; min-width:220px;"><span>Причина (обязательно)</span><input type="text" name="reason" required></label>
+    <button class="btn btn-gold" type="submit">Провести</button>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <thead><tr><th>Когда</th><th>Менеджер</th><th>Сумма</th><th>Было → стало</th><th>Причина</th><th>Кто провёл</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="muted">{{ r.created_at }}</td>
+        <td>{{ r.manager_name }}</td>
+        <td style="color:{{ '#3f8a1f' if r.amount > 0 else '#F0455A' }}; font-weight:700;">{{ "%+.2f"|format(r.amount) }}G</td>
+        <td>{{ "%.2f"|format(r.balance_before) }} → {{ "%.2f"|format(r.balance_after) }}</td>
+        <td>{{ r.reason }}</td>
+        <td>{{ r.admin_name or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">Пока ничего нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

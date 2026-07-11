@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Отработанные часы{% endblock %}
+{% block content %}
+<h1>⏱️ Отработанные часы</h1>
+<div class="card">
+  <table>
+    <thead><tr><th>Менеджер</th><th>Время</th></tr></thead>
+    <tbody>
+      {% for r in report %}
+      <tr><td>{{ r.name }}</td><td>{{ r.label }}</td></tr>
+      {% else %}
+      <tr><td colspan="2" class="muted">Данных пока нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

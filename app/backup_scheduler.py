@@ -17,6 +17,14 @@ KEY_TABLES = [
     "managers", "leads", "submissions", "withdrawals", "withdrawal_events",
     "manager_ledger", "balance_ledger", "referrals", "referral_claims",
     "contests", "contest_winners",
+    # Добавлено вместе с новыми функциями этой сессии:
+    "lead_notes", "canned_responses", "shifts", "balance_adjustments",
+    "admin_ip_allowlist", "rating_seasons", "login_log",
+    # Осознанно НЕ включены: active_sessions и push_subscriptions —
+    # это эфемерные данные, привязанные к конкретному браузеру/cookie
+    # на конкретный момент, восстанавливать их бессмысленно (сессии всё
+    # равно инвалидируются, push-подписки протухают без повторной
+    # регистрации в браузере).
 ]
 
 MAX_BACKUPS_KEPT = 40  # 40 * 6ч ≈ 10 дней истории
@@ -29,17 +37,29 @@ def _backups_dir():
 
 
 def create_backup():
-    """Собирает ключевые таблицы в один JSON-файл. Пароли не сохраняются
-    ни при каких условиях."""
+    """Собирает ключевые таблицы в один JSON-файл. Пароли и секреты 2FA
+    не сохраняются ни при каких условиях — если бы файл бэкапа утёк,
+    totp_secret/резервные коды позволили бы пройти вход в обход второго
+    фактора, это тот же риск, что и пароль."""
     data = {"created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
     for table in KEY_TABLES:
         try:
-            rows = query_all(f"SELECT * FROM {table}")
+            if table == "login_log":
+                # Без ограничения эта таблица росла бы бесконечно (запись
+                # на каждую попытку входа) — бэкапы бы разбухали со
+                # временем. Держим только последние 90 дней, этого
+                # достаточно для аудита, а старое всё равно ушло бы в
+                # предыдущие бэкапы.
+                rows = query_all("SELECT * FROM login_log WHERE created_at >= datetime('now', '-90 days')")
+            else:
+                rows = query_all(f"SELECT * FROM {table}")
             records = [dict(r) for r in rows]
             if table == "managers":
                 for r in records:
                     r.pop("password_hash", None)
+                    r.pop("totp_secret", None)
+                    r.pop("totp_backup_codes", None)
             data[table] = records
         except Exception as e:
             data[table] = {"error": str(e)}
@@ -50,7 +70,38 @@ def create_backup():
         json.dump(data, f, ensure_ascii=False, indent=2, default=str)
 
     _prune_old_backups()
+    _try_upload_to_s3(filepath, filename)
     return filename
+
+
+def _try_upload_to_s3(filepath, filename):
+    """Дублирует бэкап в S3-совместимое хранилище — опционально, требует
+    `pip install boto3` и S3_BACKUP_BUCKET в .env. Без настроек просто
+    ничего не делает — бэкап остаётся только на диске, как раньше.
+    Никогда не бросает исключение наружу (best-effort, как Telegram/email)."""
+    try:
+        from flask import current_app
+        c = current_app.config
+        if not c.get("S3_BACKUP_BUCKET"):
+            return False
+        import boto3
+        client = boto3.client(
+            "s3",
+            endpoint_url=c.get("S3_ENDPOINT_URL") or None,
+            aws_access_key_id=c.get("S3_ACCESS_KEY") or None,
+            aws_secret_access_key=c.get("S3_SECRET_KEY") or None,
+        )
+        client.upload_file(filepath, c["S3_BACKUP_BUCKET"], f"leadcrm-backups/{filename}")
+        return True
+    except ImportError:
+        return False  # boto3 не установлен — не страшно, локальный бэкап уже есть
+    except Exception as e:
+        try:
+            from flask import current_app
+            current_app.logger.warning(f"S3 backup upload failed: {e}")
+        except Exception:
+            pass
+        return False
 
 
 def _prune_old_backups():

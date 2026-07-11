@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тренажёр менеджера · {{ app_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/candy-theme.css') }}">
+  <style>
+    .sim { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+    .sim-top { display:flex; align-items:center; justify-content:space-between; margin-bottom: 18px; }
+    .sim-top .brand { font-family:'Fredoka',sans-serif; font-weight:700; font-size:20px; color:var(--ink); }
+    .sim-top a { font-weight:800; font-size:13px; color:var(--muted); }
+    .sim h1 { font-size: 26px; margin-bottom: 6px; }
+    .sim-sub { color: var(--muted); font-weight:700; margin-bottom: 18px; line-height:1.5; }
+    .sim-offline { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:800;
+                   color:#3f8a1f; background:rgba(126,217,87,.18); border:2px solid #7ED957;
+                   padding:3px 10px; border-radius:999px; margin-bottom:14px; }
+
+    .sim-brief { margin-bottom: 22px; }
+    .sim-brief h2 { font-size: 16px; margin-bottom: 10px; color: var(--candy-cyan); }
+    .sim-brief pre { white-space: pre-wrap; font-family: 'Nunito', sans-serif; font-size: 13.5px;
+                     line-height: 1.6; color: var(--text); margin: 0; font-weight:600; }
+
+    .sim-label { font-family:'Fredoka',sans-serif; font-weight:700; font-size:14px; color:var(--muted);
+                 text-transform:uppercase; letter-spacing:.5px; margin: 4px 0 12px; }
+    .sim-personas { display:grid; gap: 14px; grid-template-columns: 1fr; }
+    @media (min-width:640px){ .sim-personas { grid-template-columns: 1fr 1fr; } }
+    .sim-pc { text-align:left; cursor:pointer; width:100%; }
+    .sim-pc-top { display:flex; align-items:flex-start; gap:12px; }
+    .sim-ava { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+               font-family:'Fredoka',sans-serif; font-weight:700; font-size:20px; flex-shrink:0; border:3px solid var(--ink); }
+    .sim-pc-name { font-family:'Fredoka',sans-serif; font-weight:700; font-size:18px; color:var(--ink); }
+    .sim-pc-handle { font-size:12px; color:var(--muted); font-weight:800; margin:1px 0 2px; }
+    .sim-pc-tag { font-size:13px; color:var(--text); font-weight:600; line-height:1.35; }
+    .sim-threat { display:flex; gap:3px; margin-top:6px; }
+    .sim-threat span { width:16px; height:6px; border-radius:3px; background:var(--border); opacity:.2; }
+    .sim-threat span.on { opacity:1; }
+
+    /* ---- chat ---- */
+    .sim-chat { display:flex; flex-direction:column; height: min(74vh, 640px); padding:0; overflow:hidden; }
+    .sim-ch-head { display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:3px solid var(--ink); }
+    .sim-ch-head .name { font-family:'Fredoka',sans-serif; font-weight:700; font-size:16px; color:var(--ink); }
+    .sim-online { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); font-weight:800; }
+    .sim-dot { width:8px; height:8px; border-radius:50%; background:var(--green); }
+    .sim-dot.off { background:var(--red); }
+    .sim-back { background:none; border:none; cursor:pointer; font-size:22px; line-height:1; color:var(--muted); }
+    .sim-eval { margin-left:auto; }
+
+    .sim-objs { display:flex; gap:8px; overflow-x:auto; padding:10px 14px; border-bottom:2px dashed var(--border);
+                background:var(--panel2); }
+    .sim-obj { display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; white-space:nowrap;
+               font-size:12px; font-weight:800; color:var(--muted); border:2px solid var(--border); flex-shrink:0; }
+    .sim-obj.done { color:var(--ink); border-color:var(--green); background:rgba(126,217,87,.16); }
+    .sim-obj .tick { font-size:13px; }
+
+    .sim-msgs { flex:1; overflow-y:auto; padding:16px 14px; display:flex; flex-direction:column; gap:8px;
+                background: rgba(255,255,255,.35); }
+    .sim-empty { text-align:center; color:var(--muted); font-weight:700; margin:auto; max-width:300px; font-size:14px; }
+    .sim-row { display:flex; }
+    .sim-row.me { justify-content:flex-end; }
+    .sim-bubble { max-width:78%; padding:9px 13px; border-radius:16px; font-size:14.5px; line-height:1.4;
+                  border:2px solid var(--ink); }
+    .sim-bubble.lead { background:#fff; color:var(--ink); border-bottom-left-radius:5px; }
+    .sim-bubble.me { background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
+    .sim-shot { max-width:220px; margin-top:5px; border:2px solid var(--ink); border-radius:12px; overflow:hidden; }
+    .sim-shot-h { background:var(--accent); color:#fff; font-size:11px; font-weight:800; padding:5px 9px; }
+    .sim-shot-b { background:#F7F9FB; padding:7px 9px; }
+    .sim-shot-b div { font-size:11.5px; color:#2A3242; font-weight:700; padding:1px 0; }
+    .sim-typing { background:#fff; border:2px solid var(--ink); border-radius:16px; border-bottom-left-radius:5px;
+                  padding:11px 14px; display:inline-flex; gap:4px; }
+    .sim-typing i { width:6px; height:6px; border-radius:50%; background:var(--muted); animation:simb 1.1s infinite; }
+    .sim-typing i:nth-child(2){ animation-delay:.15s } .sim-typing i:nth-child(3){ animation-delay:.3s }
+    @keyframes simb { 0%,60%,100%{ transform:translateY(0); opacity:.5 } 30%{ transform:translateY(-4px); opacity:1 } }
+
+    .sim-left-banner { background:rgba(255,79,110,.14); color:var(--red); font-weight:800; font-size:12.5px;
+                        padding:7px 14px; text-align:center; }
+
+    .sim-input { display:flex; gap:8px; align-items:flex-end; padding:10px 12px; border-top:3px solid var(--ink); background:var(--panel); }
+    .sim-input textarea { flex:1; resize:none; border:2px solid var(--border); border-radius:14px; padding:9px 12px;
+                          font-family:'Nunito',sans-serif; font-size:14.5px; max-height:110px; color:var(--ink); background:#fff; }
+    .sim-input textarea:disabled { opacity:.5; }
+    .sim-send { border:2px solid var(--ink); background:var(--accent); color:#fff; border-radius:50%; width:42px; height:42px;
+                cursor:pointer; font-size:18px; flex-shrink:0; }
+    .sim-send:disabled { opacity:.5; cursor:default; }
+
+    .sim-hint-btn { background:none; border:2px solid var(--border); border-radius:10px; width:36px; height:36px;
+                    font-size:16px; cursor:pointer; flex-shrink:0; }
+    .sim-hint-btn.active { border-color:var(--accent); background:rgba(255,138,61,.12); }
+    .sim-hints { border-bottom:2px dashed var(--border); background:var(--panel2); padding:10px 12px 12px;
+                 max-height:44vh; overflow-y:auto; display:none; }
+    .sim-hints.open { display:block; }
+    .sim-hints-title { font-family:'Fredoka',sans-serif; font-weight:700; font-size:12.5px; text-transform:uppercase;
+                        letter-spacing:.5px; color:var(--muted); margin-bottom:8px; }
+    .sim-hint-card { background:#fff; border:2px solid var(--border); border-radius:12px; padding:10px 11px; margin-bottom:8px; }
+    .sim-hint-card:last-child { margin-bottom:0; }
+    .sim-hint-title { font-weight:800; font-size:12.5px; color:var(--accent); margin-bottom:5px; }
+    .sim-hint-text { font-size:12.5px; line-height:1.4; color:var(--text); white-space:pre-wrap; margin-bottom:8px;
+                      font-weight:600; word-break:break-word; }
+    .sim-hint-actions { display:flex; gap:8px; }
+    .sim-hint-actions button { flex:1; border:2px solid var(--ink); border-radius:9px; padding:5px 8px; font-size:12px;
+                                font-weight:800; cursor:pointer; background:#fff; color:var(--ink); }
+    .sim-hint-actions button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+    .sim-turnhint { border-top:2px dashed var(--border); background:rgba(46,197,255,.08); padding:8px 12px; }
+    .sim-th-head { font-family:'Fredoka',sans-serif; font-weight:700; font-size:11.5px; text-transform:uppercase;
+                   letter-spacing:.5px; color:var(--candy-cyan); margin-bottom:4px; }
+    .sim-th-row { font-size:12.5px; line-height:1.4; color:var(--text); font-weight:600; margin-bottom:2px; }
+    .sim-th-row:last-child { margin-bottom:0; }
+    .sim-th-row b { color:var(--ink); font-weight:800; }
+
+    /* ---- result ---- */
+    .sim-score-card { text-align:center; }
+    .sim-score-big { font-family:'Fredoka',sans-serif; font-weight:700; font-size:64px; line-height:1; }
+    .sim-score-den { font-size:24px; color:var(--muted); }
+    .sim-verdict-banner { font-family:'Fredoka',sans-serif; font-weight:700; font-size:20px; padding:12px; border-radius:16px;
+                          margin:14px 0; border:3px solid var(--ink); }
+    .sim-pass { background:rgba(126,217,87,.2); color:#3f8a1f; }
+    .sim-fail { background:rgba(255,79,110,.16); color:var(--red); }
+    .sim-verdict-text { color:var(--text); font-weight:600; font-size:14px; line-height:1.5; }
+    .sim-save-notice { margin-top:12px; padding:9px 12px; border-radius:12px; font-weight:700; font-size:13px;
+                        background:var(--panel2); border:2px solid var(--border); color:var(--text); }
+    .sim-save-notice.sim-save-ok { background:rgba(126,217,87,.18); border-color:#7ED957; color:#3f8a1f; }
+    .sim-save-notice.sim-save-warn { background:rgba(255,79,110,.14); border-color:var(--red); color:var(--red); }
+    .sim-bar { padding:9px 0; border-bottom:2px dashed var(--border); }
+    .sim-bar-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+    .sim-bar-name { font-weight:800; font-size:14px; color:var(--ink); }
+    .sim-bar-w { font-size:11px; color:var(--muted); font-weight:800; }
+    .sim-bar-score { font-family:'Fredoka',sans-serif; font-weight:700; font-size:16px; }
+    .sim-bar-track { height:8px; border-radius:5px; background:var(--panel2); border:1px solid var(--border); overflow:hidden; }
+    .sim-bar-fill { height:100%; border-radius:5px; }
+    .sim-two { display:grid; gap:12px; grid-template-columns:1fr; margin:14px 0; }
+    @media (min-width:640px){ .sim-two { grid-template-columns:1fr 1fr; } }
+    .sim-list-title { font-family:'Fredoka',sans-serif; font-weight:700; font-size:14px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+    .sim-li { font-size:13.5px; font-weight:600; color:var(--text); line-height:1.4; padding:3px 0; display:flex; gap:7px; }
+    .sim-lost { border:3px solid var(--red); }
+    .sim-actions { display:flex; gap:12px; margin-top:8px; }
+    .sim-actions .btn { flex:1; }
+  </style>
+</head>
+<body>
+<div class="sim">
+  <div class="sim-top">
+    <div class="brand">◆ Тренажёр менеджера</div>
+    <a href="{{ url_for('dashboard.index') }}">На главную →</a>
+  </div>
+  <div id="sim-app"></div>
+</div>
+
+<script>
+window.SIM_DATA = {
+  personas: {{ personas|tojson }},
+  rubric: {{ rubric|tojson }},
+  contest: {{ contest|tojson }},
+  hints: {{ hints|tojson }},
+  maxScore: {{ max_score }},
+  threshold: {{ threshold }},
+  isLoggedIn: {{ (current_manager is not none)|tojson }},
+  csrfToken: {{ csrf_token()|tojson }}
+};
+</script>
+<script>
+(function () {
+  const D = window.SIM_DATA;
+  const app = document.getElementById('sim-app');
+  const ORDER = ['subscribe', 'comment', 'screenshot'];
+  const OBJ_LABELS = { subscribe: 'Подписался на группу', comment: 'Оставил комментарий с ID', screenshot: 'Прислал скриншот' };
+
+  /* ============================ ПРАВИЛА / КЛЮЧЕВЫЕ СЛОВА ============================ */
+  const KX = {
+    greet: /привет|здравств|добрый\s?(день|вечер)|хай\b|ку\b/i,
+    contest: /конкурс|розыгрыш|приз|gold|голд|карамбит|нож/i,
+    subscribeAsk: /подпи[шс]|вступи(ть)?\s*в\s*групп/i,
+    commentAsk: /коммент|(напиши|оставь|укажи|добавь|пришли).{0,15}(айди|id)|под\s*постом/i,
+    screenshotAsk: /скрин|фото.{0,15}(подтвержд|доказ)|пришли\s*фото/i,
+    reassure: /бесплатно|без\s*пароля|пароль\s*не\s*нужен|честно|официальн|легал\w*|прям(ой|ом)\s*эфир|рандом|не\s*развод|не\s*кину|не\s*обман|никаких\s*паролей|подтвержд\w*|выплат\w*|отзыв\w*/i,
+    askPasswordRequest: /(скинь|кинь|вышли|пришли(те)?|дай(те)?|отправ\w*|напиши(те)?|скажи(те)?|продиктуй(те)?)\w*\s+(мне\s+)?(свой\s+)?(логин\w*\s*(и|,)?\s*)?парол\w*/i,
+    pressure: /срочно|быстрее|скорее|сейчас\s*же|ты\s*должен|обязан|не\s*тяни|тороп\w*|время\s*идёт|(до\s*конца|осталось).{0,20}(час|минут)/i,
+    rude: /дура|идиот|тупой|заткнись|отвали|пшёл|пшел|бесишь|достал/i,
+    calm: /понимаю|без\s*проблем|конечно|как\s*вам\s*удобно|извините|хорошо,?\s*объясню|спокойно/i,
+  };
+  const ASK = { subscribe: KX.subscribeAsk, comment: KX.commentAsk, screenshot: KX.screenshotAsk };
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function threatColor(t) { return ['#7ED957','#7ED957','#2EC5FF','#FFC857','#FF8A3D','#FF4F6E'][t] || '#8494B2'; }
+  function personaById(id) { return D.personas.find(p => p.id === id); }
+
+  /* ============================ СЦЕНАРИИ ПЕРСОНАЖЕЙ ============================ */
+  const SCRIPTS = {
+    maxon: {
+      gate: 'simple',
+      lines: {
+        prompt: ['о, привет! а что за конкурс?', 'звучит интересно, что надо делать?', 'го, а что там за приз?'],
+        agree_subscribe: ['окей, подписался ✅', 'го, сделал', 'заебись, подписка есть'],
+        agree_comment: ['норм, айди кинул в коммент', 'сделал, там мой id', 'го, готово'],
+        agree_screenshot: ['лови скрин 📷', 'вот, го'],
+        allDone: ['спс, жду итоги!', 'го скорей бы результаты 🔥'],
+        afterLeave: ['...'],
+      },
+    },
+    denz: {
+      gate: 'trust', trustThreshold: 2,
+      lines: {
+        prompt: ['так, а это не развод часом?', 'с чего вдруг бесплатно раздаёте?', 'звучит подозрительно если честно'],
+        skeptic: ['а пароль от аккаунта спросите потом?', 'что-то как-то подозрительно всё это', 'много таких разводов видел уже'],
+        stillDoubt: ['хм, всё равно как-то стрёмно', 'не уверен если честно...', 'ну не знаю, звучит как разводка'],
+        agree_subscribe: ['ну лады, подписался', 'окей раз так, го', 'ладно, поверю. подписка есть'],
+        agree_comment: ['коммент кинул, там айди', 'сделал, но смотрите не обманите'],
+        agree_screenshot: ['вот скрин, надеюсь не разведёте', 'лови, но я проверю итоги'],
+        allDone: ['ну посмотрим, что там по итогам'],
+        leave: ['так, что-то мне не нравится это всё, до связи', 'не, спасибо, не хочу проблем'],
+        afterLeave: ['...'],
+      },
+    },
+    kd: {
+      gate: 'concise', conciseMax: 80, conciseNeeded: 2,
+      lines: {
+        shortAck: ['норм', 'ну', 'мб', '?', 'ок'],
+        wallOfText: ['много букв', 'коротко можно?', 'ты чего роман пишешь'],
+        agree_subscribe: ['подписался', 'го'],
+        agree_comment: ['кинул id', 'вот'],
+        agree_screenshot: ['на', 'держи'],
+        allDone: ['ок жду'],
+        afterLeave: ['...'],
+      },
+    },
+    vlad: {
+      gate: 'remind',
+      lines: {
+        offTopic: ['слушай, а ты в каком ранге кст?', 'видел новый скин на awp вообще?', 'о, а хотел спросить про обнову кстати'],
+        promise: ['ок, щас сделаю', 'момент, погоди чуть', 'ща е, минутку'],
+        agree_subscribe: ['фух сделал, подписался', 'все, подписка есть, прости что забыл 😅'],
+        agree_comment: ['вот, отправил в коммент id', 'готово, скинул айди'],
+        agree_screenshot: ['держи скрин, автез', 'вот, извини что долго'],
+        allDone: ['красава, жду итоги теперь'],
+        afterLeave: ['...'],
+      },
+    },
+    awp: {
+      gate: 'calm', calmThreshold: 3,
+      lines: {
+        toxic: ['чё за спам мне пишешь', 'иди отсюда, скамер', 'ботов там наняли что ли', 'не грузи, я занят'],
+        softening: ['ладно... но я слежу за тобой', 'хм, ты хотя бы вежливый', 'может и не разводила, посмотрим'],
+        agree_subscribe: ['так и быть, подписался', 'ла хорошо, го подписка'],
+        agree_comment: ['на, коммент с id есть', 'кинул, только не обмани'],
+        agree_screenshot: ['держи скрин, последний шанс тебе', 'вот, но я проверю'],
+        allDone: ['ну посмотрим что там по итогам будет'],
+        leave: ['всё, разговор окончен', 'иди отсюда, репорт кину'],
+        afterLeave: ['...'],
+      },
+    },
+  };
+
+  /* ============================ ДВИЖОК ХОДА ============================ */
+  function freshState() {
+    return { done: { subscribe: false, comment: false, screenshot: false },
+             trust: 0, calm: 0, concise: 0, vladPromised: null, left: false, turns: 0 };
+  }
+
+  function nextPending(state) { return ORDER.find(k => !state.done[k]) || null; }
+
+  function turn(personaId, state, msg) {
+    const sc = SCRIPTS[personaId];
+    state.turns++;
+    if (state.left) return { text: pick(sc.lines.afterLeave) };
+
+    const rude = KX.rude.test(msg);
+    const askedPassword = KX.askPasswordRequest.test(msg);
+
+    if (sc.gate === 'calm' && rude) { state.left = true; return { text: pick(sc.lines.leave), left: true }; }
+    if (sc.gate === 'trust' && askedPassword) { state.left = true; return { text: pick(sc.lines.leave), left: true }; }
+    if (sc.gate === 'trust') {
+      if (KX.reassure.test(msg)) state.trust++;
+      if (KX.pressure.test(msg) || rude) state.trust = Math.max(0, state.trust - 1);
+    }
+    if (sc.gate === 'calm' && KX.calm.test(msg)) state.calm++;
+
+    const pending = nextPending(state);
+    if (!pending) return { text: pick(sc.lines.allDone) };
+
+    if (sc.gate === 'concise') {
+      if (msg.length > sc.conciseMax) return { text: pick(sc.lines.wallOfText) };
+      state.concise++;
+    }
+
+    const asked = ASK[pending].test(msg);
+
+    let ready = true;
+    if (sc.gate === 'trust') ready = state.trust >= sc.trustThreshold;
+    if (sc.gate === 'calm') ready = state.calm >= sc.calmThreshold;
+    if (sc.gate === 'concise') ready = state.concise >= sc.conciseNeeded;
+    if (sc.gate === 'remind') {
+      if (asked && state.vladPromised !== pending) { state.vladPromised = pending; return { text: pick(sc.lines.promise) }; }
+      ready = asked && state.vladPromised === pending;
+    }
+
+    if (asked && ready) {
+      state.done[pending] = true;
+      if (sc.gate === 'remind') state.vladPromised = null;
+      return { text: pick(sc.lines['agree_' + pending]), done: pending, screenshot: pending === 'screenshot' };
+    }
+    if (asked && !ready) {
+      if (sc.gate === 'trust') return { text: pick(sc.lines.stillDoubt) };
+      if (sc.gate === 'calm') return { text: pick(state.calm > 0 ? sc.lines.softening : sc.lines.toxic) };
+    }
+    if (sc.gate === 'trust') return { text: pick(sc.lines.skeptic) };
+    if (sc.gate === 'calm') return { text: pick(state.calm > 0 ? sc.lines.softening : sc.lines.toxic) };
+    if (sc.gate === 'concise') return { text: pick(sc.lines.shortAck) };
+    if (sc.gate === 'remind') return { text: pick(sc.lines.offTopic) };
+    return { text: pick(sc.lines.prompt) };
+  }
+
+  /* ============================ ОЦЕНКА ПО ПРАВИЛАМ ============================ */
+  function clamp(n) { return Math.max(0, Math.min(100, Math.round(n))); }
+
+  function scoreTranscript(personaId, transcript, state) {
+    const mgr = transcript.filter(m => m.role === 'manager').map(m => m.text);
+    const first = mgr[0] || '';
+    const count = (arr, rx) => arr.filter(t => rx.test(t)).length;
+    const reassureN = count(mgr, KX.reassure);
+    const pressureN = count(mgr, KX.pressure);
+    const rudeN = count(mgr, KX.rude);
+    const calmN = count(mgr, KX.calm);
+    const askedPassword = mgr.some(t => KX.askPasswordRequest.test(t));
+    const shoutN = mgr.filter(t => (t.match(/!/g) || []).length >= 3).length;
+
+    const byKey = {};
+
+    let s = 0;
+    if (KX.greet.test(first)) s += 25;
+    if (KX.contest.test(first)) s += 35;
+    if (first.length >= 10 && first.length <= 220) s += 25;
+    if (/\?/.test(first)) s += 15;
+    byKey.opening = { score: clamp(s), comment: KX.contest.test(first)
+      ? 'Сразу обозначил суть предложения — хороший старт.'
+      : 'Первое сообщение не объясняло, о чём вообще речь — лид не понимал контекста.' };
+
+    const subA = mgr.some(t => KX.subscribeAsk.test(t)), comA = mgr.some(t => KX.commentAsk.test(t)), scrA = mgr.some(t => KX.screenshotAsk.test(t));
+    s = (subA ? 34 : 0) + (comA ? 33 : 0) + (scrA ? 33 : 0);
+    byKey.clarity = { score: clamp(s), comment: comA
+      ? 'Условия по шагам были озвучены явно, включая просьбу указать ID.'
+      : 'Не все шаги были явно проговорены — лид мог не понять, что делать дальше.' };
+
+    const threat = (personaById(personaId) || { threat: 3 }).threat;
+
+    s = (95 - threat * 7) + reassureN * 12 - pressureN * 15 - rudeN * 25;
+    byKey.objections = { score: clamp(s), comment: reassureN > 0
+      ? 'Сомнения снимались спокойными, конкретными аргументами.'
+      : 'Возражения лида почти не отрабатывались развёрнуто.' };
+
+    s = (90 - threat * 4) + reassureN * 10 - pressureN * 10 - (askedPassword ? 50 : 0) - (state.left ? 40 : 0);
+    byKey.trust = { score: clamp(s), comment: askedPassword
+      ? 'В переписке звучала просьба прислать пароль/логин — это выглядит как скам и убивает доверие.'
+      : 'Общение не давало повода заподозрить обман.' };
+
+    s = 80 + calmN * 8 - rudeN * 30 - shoutN * 15;
+    byKey.tone = { score: clamp(s), comment: rudeN > 0
+      ? 'В сообщениях проскакивала грубость — это соответствующе повлияло на лида.'
+      : 'Тон ровный и вежливый на протяжении всего диалога.' };
+
+    s = (state.done.subscribe ? 34 : 0) + (state.done.comment ? 33 : 0) + (state.done.screenshot ? 33 : 0);
+    if (state.left) s = Math.min(s, 20);
+    byKey.conversion = { score: clamp(s), comment: state.left
+      ? 'Лид покинул диалог, не дойдя до конца воронки.'
+      : (state.done.screenshot ? 'Полностью довёл лида по всем шагам.' : 'Не все целевые действия были выполнены до конца диалога.') };
+
+    s = state.done.screenshot ? 100 : (scrA ? 25 : 0);
+    byKey.confirmation = { score: clamp(s), comment: state.done.screenshot
+      ? 'Финальное подтверждение (скрин) получено.'
+      : 'Подтверждение участия так и не было получено.' };
+
+    const total_w = D.rubric.reduce((a, r) => a + r.weight, 0);
+    const overall = Math.round(D.rubric.reduce((a, r) => a + (byKey[r.key].score || 0) * r.weight, 0) / total_w);
+    const score500 = Math.max(1, Math.round(overall / 100 * D.maxScore));
+    const passed = score500 >= D.threshold;
+
+    const strengths = [], improvements = [];
+    D.rubric.forEach(r => {
+      const c = byKey[r.key];
+      if (c.score >= 75) strengths.push(r.name + ': ' + c.comment);
+      else if (c.score < 50) improvements.push(r.name + ': ' + c.comment);
+    });
+    if (!strengths.length) strengths.push('Диалог доведён до конца — уже неплохая база для разбора.');
+    if (!improvements.length) improvements.push('Существенных провалов не найдено — есть куда расти по мелочи.');
+
+    let lostLead = '';
+    if (state.left) {
+      const p = personaById(personaId);
+      lostLead = p.id === 'awp'
+        ? 'Лид ушёл — не выдержал тона переписки или почувствовал давление.'
+        : p.id === 'denz'
+          ? 'Лид ушёл — недостаточно доверия к предложению, либо была просьба ввести пароль/логин.'
+          : 'Лид прервал диалог.';
+    } else if (!state.done.screenshot) {
+      const p = nextPending(state);
+      lostLead = 'Диалог не был доведён до конца — не выполнен шаг «' + (OBJ_LABELS[p] || p) + '».';
+    }
+
+    const verdict = passed
+      ? 'Уверенная работа — лид доведён до участия, порог пройден.'
+      : (state.left ? 'Лид сорвался раньше времени — попробуй другой подход к его типу личности.'
+                    : 'Диалог не дотянул до порога — посмотри разбор по критериям ниже.');
+
+    return { criteria: D.rubric.map(r => ({ key: r.key, score: byKey[r.key].score, comment: byKey[r.key].comment })),
+             overall, score: score500, max_score: D.maxScore, threshold: D.threshold, passed,
+             strengths, improvements, lost_lead: lostLead, verdict };
+  }
+
+  /* ============================ ПОШАГОВАЯ ПОДСКАЗКА («как ответить») ============================ */
+  function turnHint(personaId, state) {
+    const pending = nextPending(state);
+    const sc = SCRIPTS[personaId];
+
+    if (state.turns === 0) {
+      const openers = {
+        maxon: { goal: 'Поздоровайся и коротко расскажи о конкурсе (приз, что нужно сделать).', tone: 'дружелюбный, живой', format: '1–2 предложения, без формальностей' },
+        denz:  { goal: 'Поздоровайся и обозначь суть — лид будет насторожен, не переусердствуй с уговорами сразу.', tone: 'ровный, без давления и без заискивания', format: '1–2 предложения, по делу' },
+        kd:    { goal: 'Поздоровайся и сразу спроси что-то короткое и конкретное.', tone: 'лаконичный', format: '1 короткая фраза' },
+        vlad:  { goal: 'Поздоровайся, обозначь суть и сразу попроси первое действие.', tone: 'дружелюбный, энергичный', format: 'Коротко, с конкретной просьбой' },
+        awp:   { goal: 'Поздоровайся спокойно — будь готов к грубому ответу, не реагируй эмоционально.', tone: 'ровный, невозмутимый', format: '1 короткое, вежливое сообщение' },
+      };
+      return openers[personaId] || openers.maxon;
+    }
+    if (state.left) {
+      return { goal: 'Лид покинул диалог — продолжить в этой попытке не получится.', tone: '—', format: 'Заверши разговор и посмотри разбор, в следующий раз скорректируй подход.' };
+    }
+    if (!pending) {
+      return { goal: 'Все шаги выполнены — поблагодари и заверши разговор.', tone: 'дружелюбный, без лишнего', format: '1 короткая фраза' };
+    }
+
+    const label = OBJ_LABELS[pending].toLowerCase();
+
+    if (sc.gate === 'trust') {
+      if (state.trust >= sc.trustThreshold)
+        return { goal: `Доверие уже есть — прямо попроси: ${label}.`, tone: 'дружелюбный, уверенный', format: 'Короткая просьба + что именно нужно сделать' };
+      return { goal: 'Лид сомневается — развей ОДНО конкретное возражение честно, без давления (упомяни: бесплатно, без пароля, итоги открыто).', tone: 'спокойный, без оправданий и без давления', format: '1–2 коротких предложения, без канцелярита' };
+    }
+    if (sc.gate === 'calm') {
+      if (state.calm >= sc.calmThreshold)
+        return { goal: `Лид немного оттаял — прямо попроси: ${label}.`, tone: 'уверенный, но не давящий', format: 'Коротко и по делу' };
+      return { goal: 'Лид провоцирует — не отвечай тем же тоном. Спокойно ответь по сути его слов.', tone: 'ровный, вежливый, без сарказма и оправданий', format: '1 короткое предложение, без эмоций' };
+    }
+    if (sc.gate === 'concise') {
+      return { goal: `Задай короткий прямой вопрос или попроси: ${label}.`, tone: 'лаконичный, дружелюбный', format: 'Максимум 1 короткая фраза — длинные сообщения лид игнорирует' };
+    }
+    if (sc.gate === 'remind') {
+      if (state.vladPromised === pending)
+        return { goal: `Влад обещал и отвлёкся — мягко верни его к теме и явно напомни: ${label}.`, tone: 'дружелюбный, без раздражения', format: 'Короткое напоминание с явным названием действия' };
+      return { goal: `Прямо попроси: ${label}.`, tone: 'дружелюбный, простой', format: 'Конкретная короткая просьба' };
+    }
+    return { goal: `Ответь по делу и предложи следующий шаг: ${label}.`, tone: 'дружелюбный, живой', format: 'Коротко, без формальностей' };
+  }
+
+  /* ============================ UI: МЕНЮ ============================ */
+  let state = null, engineState = null, leftFlag = false;
+
+  function renderMenu() {
+    state = null;
+    const cards = D.personas.map(p => `
+      <button class="card sim-pc" data-id="${esc(p.id)}">
+        <div class="sim-pc-top">
+          <div class="sim-ava" style="background:${p.color}22;color:${p.color};border-color:${p.color}">${esc(p.codename[0])}</div>
+          <div style="flex:1;min-width:0">
+            <div class="sim-pc-name">${esc(p.codename)}</div>
+            <div class="sim-pc-handle">${esc(p.handle)}</div>
+            <div class="sim-pc-tag">${esc(p.tag)}</div>
+            <div class="sim-threat">${[1,2,3,4,5].map(i =>
+              `<span class="${i <= p.threat ? 'on' : ''}" style="background:${i <= p.threat ? threatColor(p.threat) : ''}"></span>`).join('')}</div>
+          </div>
+        </div>
+        <div class="btn btn-gold btn-sm" style="margin-top:12px;width:100%">🎯 Пройти тест</div>
+      </button>`).join('');
+
+    app.innerHTML = `
+      <div class="sim-offline">⚡ Офлайн-версия · без ИИ, по сценариям и правилам</div>
+      <h1>Проверь себя как менеджер</h1>
+      <p class="sim-sub">Выбери цель, напиши первым и доведи лида до участия в конкурсе.
+      В конце — разбор и оценка от 1 до ${D.maxScore}. Порог: <b>${D.threshold}</b> — иначе тест нужно пройти заново.</p>
+
+      <div class="card sim-brief">
+        <h2>📣 Что ты предлагаешь</h2>
+        <pre>${esc(D.contest)}</pre>
+      </div>
+
+      <div class="sim-label">Цели</div>
+      <div class="sim-personas">${cards}</div>`;
+
+    app.querySelectorAll('.sim-pc').forEach(btn => btn.addEventListener('click', () => startChat(btn.dataset.id)));
+  }
+
+  /* ============================ UI: ЧАТ ============================ */
+  function startChat(personaId) {
+    const p = personaById(personaId);
+    state = { personaId, messages: [] };
+    engineState = freshState();
+
+    app.innerHTML = `
+      <div class="card sim-chat">
+        <div class="sim-ch-head">
+          <button class="sim-back" id="sim-back" title="Назад">‹</button>
+          <div class="sim-ava" style="width:38px;height:38px;font-size:17px;background:${p.color}22;color:${p.color};border-color:${p.color}">${esc(p.codename[0])}</div>
+          <div>
+            <div class="name">${esc(p.codename)}</div>
+            <div class="sim-online"><span class="sim-dot" id="sim-dot"></span><span id="sim-status">онлайн</span></div>
+          </div>
+          <button class="sim-hint-btn" id="sim-hint-btn" title="Подсказки" style="margin-left:auto">💡</button>
+          <button class="btn btn-gold btn-sm sim-eval" id="sim-eval" disabled>🏆 Завершить</button>
+        </div>
+        <div class="sim-hints" id="sim-hints"></div>
+        <div class="sim-objs" id="sim-objs">
+          ${ORDER.map(k => `<div class="sim-obj" data-k="${k}"><span class="tick">○</span>${OBJ_LABELS[k]}</div>`).join('')}
+        </div>
+        <div class="sim-msgs" id="sim-msgs">
+          <div class="sim-empty" id="sim-empty">${esc(p.codename)} онлайн. Напиши первым — как в реальном холодном контакте.</div>
+        </div>
+        <div id="sim-left-banner"></div>
+        <div class="sim-turnhint" id="sim-turnhint"></div>
+        <div class="sim-input">
+          <textarea id="sim-input" rows="1" placeholder="Сообщение…"></textarea>
+          <button class="sim-send" id="sim-send" disabled>➤</button>
+        </div>
+      </div>`;
+
+    const input = document.getElementById('sim-input');
+    const sendBtn = document.getElementById('sim-send');
+    document.getElementById('sim-back').addEventListener('click', renderMenu);
+    document.getElementById('sim-eval').addEventListener('click', runScore);
+    input.addEventListener('input', () => { sendBtn.disabled = !input.value.trim(); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+    sendBtn.addEventListener('click', send);
+    renderHints();
+    document.getElementById('sim-hint-btn').addEventListener('click', toggleHints);
+    renderTurnHint();
+    input.focus();
+  }
+
+  function renderTurnHint() {
+    const box = document.getElementById('sim-turnhint');
+    if (!box || !state) return;
+    const h = turnHint(state.personaId, engineState);
+    box.innerHTML = `
+      <div class="sim-th-head">🧭 Как продолжить</div>
+      <div class="sim-th-row"><b>Цель:</b> ${esc(h.goal)}</div>
+      <div class="sim-th-row"><b>Тон:</b> ${esc(h.tone)}</div>
+      <div class="sim-th-row"><b>Формат:</b> ${esc(h.format)}</div>`;
+  }
+
+  function renderHints() {
+    const box = document.getElementById('sim-hints');
+    box.innerHTML = `<div class="sim-hints-title">💡 Шпаргалка · готовые тексты</div>` +
+      (D.hints || []).map((h, i) => `
+        <div class="sim-hint-card">
+          <div class="sim-hint-title">${esc(h.title)}</div>
+          <div class="sim-hint-text">${esc(h.text)}</div>
+          <div class="sim-hint-actions">
+            <button class="primary" data-insert="${i}">Вставить в чат</button>
+            <button data-copy="${i}">Скопировать</button>
+          </div>
+        </div>`).join('');
+    box.querySelectorAll('[data-insert]').forEach(btn => btn.addEventListener('click', () => {
+      const text = D.hints[+btn.dataset.insert].text;
+      const input = document.getElementById('sim-input');
+      input.value = input.value.trim() ? (input.value.trim() + '\n\n' + text) : text;
+      document.getElementById('sim-send').disabled = !input.value.trim();
+      toggleHints(false);
+      input.focus();
+    }));
+    box.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', () => {
+      const text = D.hints[+btn.dataset.copy].text;
+      navigator.clipboard?.writeText(text).then(() => {
+        const old = btn.textContent; btn.textContent = 'Скопировано ✓';
+        setTimeout(() => { btn.textContent = old; }, 1200);
+      }).catch(() => {});
+    }));
+  }
+
+  function toggleHints(force) {
+    const box = document.getElementById('sim-hints');
+    const btn = document.getElementById('sim-hint-btn');
+    const open = typeof force === 'boolean' ? force : !box.classList.contains('open');
+    box.classList.toggle('open', open);
+    btn.classList.toggle('active', open);
+  }
+
+  function addBubble(role, text, screenshot) {
+    const empty = document.getElementById('sim-empty');
+    if (empty) empty.remove();
+    const msgs = document.getElementById('sim-msgs');
+    const row = document.createElement('div');
+    row.className = 'sim-row ' + (role === 'manager' ? 'me' : '');
+    let html = '';
+    if (text) html += `<div class="sim-bubble ${role === 'manager' ? 'me' : 'lead'}">${esc(text)}</div>`;
+    if (screenshot) html += `
+      <div class="sim-shot">
+        <div class="sim-shot-h">📷 screenshot.png</div>
+        <div class="sim-shot-b"><div>✅ Подписался на группу</div><div>✅ Комментарий с ID оставлен</div></div>
+      </div>`;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;max-width:80%;' + (role === 'manager' ? 'align-items:flex-end' : 'align-items:flex-start');
+    wrap.innerHTML = html;
+    row.appendChild(wrap);
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function showTyping(on) {
+    const msgs = document.getElementById('sim-msgs');
+    let t = document.getElementById('sim-typing');
+    if (on) {
+      if (t) return;
+      const row = document.createElement('div');
+      row.className = 'sim-row'; row.id = 'sim-typing';
+      row.innerHTML = '<div class="sim-typing"><i></i><i></i><i></i></div>';
+      msgs.appendChild(row); msgs.scrollTop = msgs.scrollHeight;
+    } else if (t) t.remove();
+  }
+
+  function updateObjectives() {
+    ORDER.forEach(k => {
+      const chip = document.querySelector('.sim-obj[data-k="' + k + '"]');
+      if (chip && engineState.done[k]) { chip.classList.add('done'); chip.querySelector('.tick').textContent = '✓'; }
+    });
+  }
+
+  function send() {
+    const input = document.getElementById('sim-input');
+    const t = input.value.trim();
+    if (!t || leftFlag) return;
+    state.messages.push({ role: 'manager', text: t });
+    addBubble('manager', t, false);
+    input.value = '';
+    document.getElementById('sim-send').disabled = true;
+    document.getElementById('sim-eval').disabled = false;
+    showTyping(true);
+
+    setTimeout(() => {
+      const res = turn(state.personaId, engineState, t);
+      showTyping(false);
+      updateObjectives();
+      state.messages.push({ role: 'lead', text: res.text, screenshot: !!res.screenshot });
+      addBubble('lead', res.text, !!res.screenshot);
+      if (res.left) {
+        leftFlag = true;
+        document.getElementById('sim-dot').classList.add('off');
+        document.getElementById('sim-status').textContent = 'вышел из чата';
+        document.getElementById('sim-input').disabled = true;
+        document.getElementById('sim-send').disabled = true;
+        document.getElementById('sim-left-banner').innerHTML = '<div class="sim-left-banner">Лид покинул диалог. Можно завершить и посмотреть разбор.</div>';
+      } else {
+        document.getElementById('sim-send').disabled = !input.value.trim();
+      }
+      renderTurnHint();
+    }, 450 + Math.random() * 500);
+  }
+
+  /* ============================ РЕЗУЛЬТАТ ============================ */
+  function runScore() {
+    if (!state || state.messages.filter(m => m.role === 'manager').length === 0) return;
+    const data = scoreTranscript(state.personaId, state.messages, engineState);
+
+    if (D.isLoggedIn) {
+      fetch('/simulator/save-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': D.csrfToken },
+        body: JSON.stringify({ score: data.score, passed: data.passed }),
+      })
+        .then(r => r.json())
+        .then(res => renderResult(state.personaId, data, res))
+        .catch(() => renderResult(state.personaId, data, null));
+    } else {
+      renderResult(state.personaId, data, null);
+    }
+  }
+
+  function renderResult(personaId, data, saveInfo) {
+    const by = {}; (data.criteria || []).forEach(c => { by[c.key] = c; });
+    const passed = data.passed;
+    const scoreColor = passed ? '#3f8a1f' : '#FF4F6E';
+
+    const bars = D.rubric.map(r => {
+      const c = by[r.key] || {};
+      const sc = c.score || 0;
+      const col = sc >= 75 ? '#7ED957' : sc >= 50 ? '#FFC857' : '#FF4F6E';
+      return `
+        <div class="sim-bar">
+          <div class="sim-bar-top">
+            <span class="sim-bar-name">${esc(r.name)} <span class="sim-bar-w">· ${r.weight}%</span></span>
+            <span class="sim-bar-score" style="color:${col}">${sc}</span>
+          </div>
+          <div class="sim-bar-track"><div class="sim-bar-fill" style="width:${sc}%;background:${col}"></div></div>
+        </div>`;
+    }).join('');
+
+    const strengths = (data.strengths || []).map(s => `<div class="sim-li">✅ ${esc(s)}</div>`).join('');
+    const improvements = (data.improvements || []).map(s => `<div class="sim-li">⚠️ ${esc(s)}</div>`).join('');
+
+    let saveNotice = '';
+    if (D.isLoggedIn) {
+      if (saveInfo && saveInfo.saved && saveInfo.unlocked) {
+        saveNotice = `<div class="sim-save-notice sim-save-ok">🔓 Результат сохранён — доступ к боевым лидам открыт!</div>`;
+      } else if (saveInfo && saveInfo.saved) {
+        saveNotice = `<div class="sim-save-notice">💾 Результат сохранён в профиль (лучший балл: ${saveInfo.best_score}/${data.max_score}).</div>`;
+      } else {
+        saveNotice = `<div class="sim-save-notice sim-save-warn">⚠️ Не удалось сохранить результат в профиль — попробуй завершить ещё раз.</div>`;
+      }
+    }
+
+    app.innerHTML = `
+      <div class="card sim-score-card">
+        <div class="sim-score-big" style="color:${scoreColor}">${data.score}<span class="sim-score-den">/${data.max_score}</span></div>
+        <div class="sim-verdict-banner ${passed ? 'sim-pass' : 'sim-fail'}">
+          ${passed ? '🎉 Тест пройден!' : 'Не пройдено — нужно набрать ≥ ' + data.threshold}
+        </div>
+        <div class="sim-verdict-text">${esc(data.verdict || '')}</div>
+        ${saveNotice}
+      </div>
+
+      <div class="card" style="margin-top:16px">${bars}</div>
+
+      <div class="sim-two">
+        <div class="card" style="border-color:#7ED957">
+          <div class="sim-list-title" style="color:#3f8a1f">Сильные стороны</div>${strengths}
+        </div>
+        <div class="card" style="border-color:#FFC857">
+          <div class="sim-list-title" style="color:#B8860B">Что улучшить</div>${improvements}
+        </div>
+      </div>
+
+      ${data.lost_lead ? `
+        <div class="card sim-lost" style="margin-bottom:16px">
+          <div class="sim-list-title" style="color:#FF4F6E">Где потерял лида</div>
+          <div class="sim-li" style="color:var(--text)">${esc(data.lost_lead)}</div>
+        </div>` : ''}
+
+      <div class="sim-actions">
+        <button class="btn ${passed ? 'btn-soft' : 'btn-gold'}" id="sim-retry">🔁 ${passed ? 'Пройти ещё раз' : 'Пройти заново'}</button>
+        <button class="btn btn-soft" id="sim-other">🎯 Другой лид</button>
+      </div>`;
+
+    document.getElementById('sim-retry').addEventListener('click', () => { leftFlag = false; startChat(personaId); });
+    document.getElementById('sim-other').addEventListener('click', () => { leftFlag = false; renderMenu(); });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  renderMenu();
+})();
+</script>
+</body>
+</html>

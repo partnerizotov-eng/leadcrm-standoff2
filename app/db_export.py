@@ -62,3 +62,42 @@ def backups_download(filename):
     if not os.path.isfile(full_path):
         abort(404)
     return send_file(full_path, as_attachment=True, download_name=safe_name, mimetype="application/json")
+
+
+@bp.route("/backups/restore", methods=["GET"])
+@admin_required
+def backups_restore_form():
+    from flask import render_template
+    return render_template("backup_restore.html")
+
+
+@bp.route("/backups/restore", methods=["POST"])
+@admin_required
+def backups_restore_run():
+    import json
+    from flask import flash, redirect, render_template, request, url_for
+    from .backup_restore import restore_backup, validate_backup_shape
+
+    file = request.files.get("backup_file")
+    confirmed = request.form.get("confirm") == "yes"
+
+    if not file or not file.filename:
+        flash("Файл не выбран.", "error")
+        return redirect(url_for("db_export.backups_restore_form"))
+    if not confirmed:
+        flash("Нужно подтвердить восстановление — отметь чекбокс ниже формы.", "error")
+        return redirect(url_for("db_export.backups_restore_form"))
+
+    try:
+        data = json.load(file.stream)
+    except Exception:
+        flash("Файл повреждён или это не JSON.", "error")
+        return redirect(url_for("db_export.backups_restore_form"))
+
+    err = validate_backup_shape(data)
+    if err:
+        flash(err, "error")
+        return redirect(url_for("db_export.backups_restore_form"))
+
+    report = restore_backup(data)
+    return render_template("backup_restore_result.html", report=report, backup_created_at=data.get("created_at"))

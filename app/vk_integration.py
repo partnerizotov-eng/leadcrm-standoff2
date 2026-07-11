@@ -12,9 +12,9 @@ def get_vk_profile_url(vk_id):
         return vk_id
     
     if vk_id.isdigit():
-        return f"https://vk.com/id{vk_id}"
+        return f"https://vk.ru/id{vk_id}"
     
-    return f"https://vk.com/{vk_id}"
+    return f"https://vk.ru/{vk_id}"
 
 
 def get_direct_message_url(vk_id):
@@ -36,11 +36,11 @@ def parse_vk_id_from_input(vk_input):
     if vk_input.isdigit():
         return vk_input
     
-    match = re.search(r'vk\.com/id(\d+)', vk_input)
+    match = re.search(r'vk\.(?:com|ru)/id(\d+)', vk_input)
     if match:
         return match.group(1)
     
-    match = re.search(r'vk\.com/([a-z0-9_.]+)', vk_input)
+    match = re.search(r'vk\.(?:com|ru)/([a-z0-9_.]+)', vk_input)
     if match:
         return match.group(1)
     

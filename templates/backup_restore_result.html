@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Результат восстановления{% endblock %}
+{% block content %}
+<h1>♻️ Результат восстановления</h1>
+
+{% if report.errors %}
+  <div class="tip-warning" style="margin:16px 0; border-color:#F0455A;">
+    ❌ Восстановление не выполнено:
+    <ul>{% for e in report.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+{% else %}
+  <div class="tip-warning" style="margin:16px 0;">
+    ✅ Готово. Бэкап от <b>{{ backup_created_at }}</b> применён.
+    {% if report.safety_backup %}Страховочная копия текущего состояния перед началом:
+    <code>{{ report.safety_backup }}</code>{% endif %}
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h2 style="margin-top:0;">Обработано по таблицам</h2>
+    <table>
+      <thead><tr><th>Таблица</th><th>Строк применено</th></tr></thead>
+      <tbody>
+        {% for table, count in report.tables.items() %}
+        <tr><td><code>{{ table }}</code></td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if report.new_managers %}
+  <div class="card" style="margin-bottom:16px; border-color:#FFC23D;">
+    <h2 style="margin-top:0;">🔑 Новые менеджеры — временные пароли</h2>
+    <p class="muted">Этих менеджеров не было в текущей базе, они восстановлены заново.
+    Передай им пароль ниже — они смогут сменить его после входа.</p>
+    <table>
+      <thead><tr><th>ID</th><th>Логин</th><th>Временный пароль</th></tr></thead>
+      <tbody>
+        {% for m in report.new_managers %}
+        <tr><td>{{ m.id }}</td><td>{{ m.login }}</td><td><code>{{ m.temp_password }}</code></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if report.conflicts %}
+  <div class="card" style="margin-bottom:16px; border-color:#F0455A;">
+    <h2 style="margin-top:0;">⚠️ Пропущенные строки (конфликты)</h2>
+    <p class="muted">Эти записи не удалось применить без риска задеть другие данные — проверь вручную.</p>
+    <ul>{% for c in report.conflicts %}<li><code>{{ c }}</code></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+{% endif %}
+
+<a href="{{ url_for('db_export.backups_list') }}" class="btn btn-soft">← К списку бэкапов</a>
+{% endblock %}

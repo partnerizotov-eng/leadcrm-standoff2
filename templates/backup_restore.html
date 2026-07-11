@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Восстановление из бэкапа{% endblock %}
+{% block content %}
+<h1>♻️ Восстановить данные из бэкапа</h1>
+
+<div class="tip-warning" style="margin:16px 0; line-height:1.5;">
+  ⚠️ Перед восстановлением автоматически сохранится копия ТЕКУЩЕГО состояния базы —
+  откатиться будет можно. Восстановление только добавляет/обновляет записи по их id,
+  ничего не удаляет.<br><br>
+  Пароли менеджеров в бэкапе не хранятся: если менеджер уже есть в базе — его пароль
+  не меняется; если менеджера нет вовсе — ему будет создан новый временный пароль
+  (покажем в отчёте после восстановления).<br><br>
+  Бэкап покрывает ключевые бизнес-таблицы (менеджеры, лиды, заявки, выводы, начисления,
+  рефералы, конкурсы, заметки к лидам, шпаргалки, смены, штрафы/бонусы, журнал входов,
+  IP-allowlist, сезоны рейтинга) — остальное (скрипты, тикеты поддержки, ачивки,
+  активные сессии, push-подписки) не затрагивается.
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="tip-warning" style="margin-bottom:16px; {% if category == 'error' %}border-color:#F0455A;{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card">
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <label style="display:block; font-weight:700; margin-bottom:8px;">Файл бэкапа (.json)</label>
+    <input type="file" name="backup_file" accept=".json,application/json" required style="margin-bottom:16px;">
+
+    <label style="display:flex; align-items:flex-start; gap:8px; margin-bottom:16px; font-weight:600;">
+      <input type="checkbox" name="confirm" value="yes" required style="margin-top:3px;">
+      <span>Понимаю, что это изменит текущую базу (с автоматической страховочной копией перед началом) и подтверждаю восстановление.</span>
+    </label>
+
+    <button class="btn btn-gold" type="submit">♻️ Восстановить</button>
+    <a href="{{ url_for('db_export.backups_list') }}" class="btn btn-soft" style="margin-left:8px;">Отмена</a>
+  </form>
+</div>
+{% endblock %}

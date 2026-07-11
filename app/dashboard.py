@@ -1,6 +1,9 @@
-from flask import Blueprint, render_template, session
+import json
+from datetime import datetime, timedelta
 
-from .db import query_all, query_one
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+
+from .db import execute, query_all, query_one
 from .leads import STATUS_LABELS, STATUSES
 from .managers import manager_stats
 from .security import login_required
@@ -69,4 +72,65 @@ def index():
                            pending_withdrawals=pending_withdrawals,
                            total_balance_owed=total_balance_owed,
                            total_debt=total_debt,
-                           contest_summary=contest_summary)
+                           contest_summary=contest_summary,
+                           widgets=_get_widget_prefs(session["manager_id"]))
+
+
+@bp.route("/api/v1/stats")
+@login_required
+def api_stats():
+    """Реальные данные для графика «Динамика активности» — раньше фронт
+    дёргал этот путь, но маршрута не существовало вообще (404), и график
+    молча показывал захардкоженные заглушечные числа. Возвращает число
+    новых лидов по дням за последние 7 дней (для не-админа — только его)."""
+    role = session["role"]
+    manager_id = session["manager_id"]
+    where = "" if role == "admin" else "AND assigned_manager_id=?"
+    params = () if role == "admin" else (manager_id,)
+
+    rows = query_all(f"""
+        SELECT date(found_at) d, COUNT(*) c FROM leads
+        WHERE found_at >= date('now', '-6 days') {where}
+        GROUP BY date(found_at)
+    """, params)
+    by_day = {r["d"]: r["c"] for r in rows}
+
+    labels, values = [], []
+    for i in range(6, -1, -1):
+        d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        labels.append((datetime.now() - timedelta(days=i)).strftime("%d.%m"))
+        values.append(by_day.get(d, 0))
+
+    return jsonify(labels=labels, values=values)
+
+
+def _get_widget_prefs(manager_id):
+    """Какие KPI-виджеты на дашборде показывать — хранится в
+    manager_settings (key='dashboard_widgets', value=JSON-список видимых)."""
+    row = query_one("SELECT value FROM manager_settings WHERE manager_id=? AND key='dashboard_widgets'",
+                     (manager_id,))
+    if not row or not row["value"]:
+        return {"funnel": True, "leaderboard": True, "activity_chart": True}
+    try:
+        saved = json.loads(row["value"])
+    except (ValueError, TypeError):
+        saved = {}
+    defaults = {"funnel": True, "leaderboard": True, "activity_chart": True}
+    defaults.update(saved)
+    return defaults
+
+
+@bp.route("/dashboard/widgets", methods=["POST"])
+@login_required
+def save_widget_prefs():
+    prefs = {
+        "funnel": request.form.get("w_funnel") == "1",
+        "leaderboard": request.form.get("w_leaderboard") == "1",
+        "activity_chart": request.form.get("w_activity_chart") == "1",
+    }
+    execute(
+        "INSERT INTO manager_settings (manager_id, key, value) VALUES (?, 'dashboard_widgets', ?) "
+        "ON CONFLICT(manager_id, key) DO UPDATE SET value=excluded.value",
+        (session["manager_id"], json.dumps(prefs)))
+    flash("Настройки дашборда сохранены.", "success")
+    return redirect(url_for("dashboard.index"))

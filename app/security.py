@@ -56,6 +56,80 @@ def admin_required(view):
     return wrapped
 
 
+def ip_allowed(ip: str, allowlist: list) -> bool:
+    """Проверяет IP против списка разрешённых адресов/подсетей (CIDR).
+    На стандартной библиотеке (ipaddress), без внешних пакетов."""
+    import ipaddress
+    if not ip:
+        return False
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    for entry in allowlist:
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            if "/" in entry:
+                if addr in ipaddress.ip_network(entry, strict=False):
+                    return True
+            elif addr == ipaddress.ip_address(entry):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def get_rate_limit_snapshot():
+    """Текущее состояние всех rate-limit бакетов — для админ-дашборда.
+    Не хранит абсолютное время (только monotonic для самого throttling),
+    поэтому показываем только «сколько попыток сейчас активно в окне»,
+    а не конкретные метки времени."""
+    now = time.monotonic()
+    snapshot = []
+    for (view_name, client), bucket in _hits.items():
+        active = [t for t in bucket if now - t < 3600]  # последний час
+        if active:
+            snapshot.append({"view": view_name, "client": client, "hits_last_hour": len(active)})
+    snapshot.sort(key=lambda r: r["hits_last_hour"], reverse=True)
+    return snapshot
+
+
+def teamlead_required(view):
+    """Пускает admin и teamlead. Сама вьюха отвечает за то, чтобы
+    teamlead видел только свою команду (роль сама по себе не сужает
+    выборку — это делает каждый конкретный маршрут, см. managers.py)."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("manager_id"):
+            return redirect(url_for("auth.login", next=request.path))
+        if session.get("role") not in ("admin", "teamlead"):
+            return jsonify(error="Forbidden"), 403
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def trainer_required(view):
+    """Как login_required, но для менеджеров (не для admin) дополнительно
+    требует пройденный тренажёр (managers.trainer_passed=1) — иначе
+    редиректит на /simulator/ с объяснением. Админы всегда проходят."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("manager_id"):
+            return redirect(url_for("auth.login", next=request.path))
+        if session.get("role") != "admin":
+            from flask import flash
+            from .db import query_one
+            row = query_one("SELECT trainer_passed FROM managers WHERE id=?", (session["manager_id"],))
+            passed = bool(row and row["trainer_passed"])
+            if not passed:
+                flash("Сначала пройди тренажёр (нужно набрать 450+/500) — после этого откроется доступ к лидам.", "error")
+                return redirect(url_for("simulator.index"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
 # --- CSRF (stdlib only) ------------------------------------------------------
 
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}

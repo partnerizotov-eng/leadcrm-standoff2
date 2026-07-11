@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Журнал входов{% endblock %}
+{% block content %}
+<h1>🔑 Журнал входов</h1>
+<div class="card">
+  <table>
+    <thead><tr><th>Когда</th><th>Логин</th><th>IP</th><th>Успех</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="muted">{{ r.created_at }}</td>
+        <td>{{ r.manager_name or r.login_attempted or '—' }}</td>
+        <td class="mono">{{ r.ip_address or '—' }}</td>
+        <td>{{ '✅' if r.success else '❌' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">Записей пока нет.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

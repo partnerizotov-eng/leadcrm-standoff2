@@ -55,6 +55,7 @@
         <th>Логин</th>
         <th>Статус</th>
         <th>Баланс</th>
+        {% if is_admin %}<th>Тимлид</th>{% endif %}
         <th></th>
       </tr>
     </thead>
@@ -65,6 +66,19 @@
         <td>{{ m.login }}</td>
         <td>{{ '✅ Активен' if m.is_active else '❌ Отключен' }}</td>
         <td><span class="balance-pill">{{ "%.2f"|format(m.balance) }}G</span></td>
+        {% if is_admin %}
+        <td>
+          <form method="post" action="{{ url_for('managers.set_team_lead', manager_id=m.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="team_lead_id" onchange="this.form.requestSubmit()">
+              <option value="">—</option>
+              {% for t in team_leads %}
+              <option value="{{ t.id }}" {% if m.team_lead_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+        {% endif %}
         <td style="display:flex; gap:6px; flex-wrap:wrap;">
           <form method="post" action="{{ url_for('managers.toggle', manager_id=m.id) }}" class="inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

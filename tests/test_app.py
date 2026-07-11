@@ -28,11 +28,19 @@ class Base(unittest.TestCase):
         return self.client.post("/login", data={"login": "admin", "password": "adminpass123"},
                                 follow_redirects=True)
 
-    def make_manager(self, name="Manager"):
+    def make_manager(self, name="Manager", profile_completed=True, trainer_passed=True):
+        # profile_completed=1 и trainer_passed=1 по умолчанию: иначе
+        # force_profile_completion / trainer_required (before_request и
+        # маршруты в leads.py) редиректят на анкету/тренажёр вместо
+        # ожидаемой страницы. Тесты именно ЭТИХ гейтов создают менеджера
+        # с явным trainer_passed=False/profile_completed=False.
         with self.app.app_context():
             login = f"mgr_{secrets.token_hex(4)}"
-            mid = execute("INSERT INTO managers (login, password_hash, name, role) VALUES (?,?,?,'manager')",
-                         (login, hash_password("mgrpass"), name))
+            mid = execute(
+                "INSERT INTO managers (login, password_hash, name, role, profile_completed, trainer_passed) "
+                "VALUES (?,?,?,'manager',?,?)",
+                (login, hash_password("mgrpass"), name,
+                 1 if profile_completed else 0, 1 if trainer_passed else 0))
         return mid, login
 
     def login_manager(self, login, password="mgrpass"):

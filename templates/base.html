@@ -1,6 +1,7 @@
 
 <html lang="ru">
 <head>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{{ app_name }}{% endblock %} · {{ app_name }}</title>
@@ -8,7 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/candy-theme.css') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 </head>
-<body{% if current_manager %} data-tour-active='{{ get_active_tour()|tojson }}' data-tour-replay='{{ get_tour_for_replay()|tojson }}'{% endif %}>
+<body class="{{ 'dark-mode' if current_manager and current_manager.dark_mode }}"{% if current_manager %} data-tour-replay='{{ get_tour_for_replay()|tojson }}'{% endif %}>
 {% if current_manager %}
 {% set chat_unread = unread_chat_count() %}
 {% set total_unread = (unread_notifications or 0) + chat_unread %}
@@ -29,31 +30,48 @@
     <div class="brand">◆ {{ app_name }}</div>
     <nav class="nav">
       <a href="{{ url_for('dashboard.index') }}" class="nav-item {{ 'active' if request.endpoint == 'dashboard.index' }}">📊 Обзор</a>
-      <a href="{{ url_for('leads.index') }}" class="nav-item {{ 'active' if request.endpoint == 'leads.index' }}">📋 Лиды</a>
-      <a href="{{ url_for('submissions.index') }}" class="nav-item {{ 'active' if request.endpoint == 'submissions.index' }}">📸 Заявки</a>
-      <a href="{{ url_for('withdrawals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'withdrawals.index' }}">💰 Выводы</a>
-      <a href="{{ url_for('payouts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'payouts.index' }}">📜 Выплаты</a>
-      <a href="{{ url_for('chat.index') }}" class="nav-item {{ 'active' if request.endpoint == 'chat.index' }}">
-        💬 Чат {% if chat_unread %}<span class="badge-count">{{ chat_unread }}</span>{% endif %}
-      </a>
-      <a href="{{ url_for('support_tickets.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('support_tickets.') }}">🎫 Тикеты</a>
-      <a href="{{ url_for('referrals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'referrals.index' }}">🤝 Рефералы</a>
-      <a href="{{ url_for('contest.index') }}" class="nav-item {{ 'active' if request.endpoint == 'contest.index' }}">🏆 Конкурс</a>
-      <a href="{{ url_for('advent_calendar.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('advent_calendar.') }}">🗓️ Календарь</a>
-      <a href="{{ url_for('wheel.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('wheel.') }}">🎡 Колесо призов</a>
-      <a href="{{ url_for('puzzle.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('puzzle.') }}">🧩 Пазл</a>
-      <a href="{{ url_for('achievements.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('achievements.') }}">🏆 Достижения</a>
-      <a href="{{ url_for('scripts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'scripts.index' }}">📝 Скрипты</a>
-      <a href="{{ url_for('admin.top_managers') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.top_managers' }}">🏆 Топ менеджеров</a>
 
-      <a href="{{ url_for('game.leaderboard') }}" class="nav-item {{ 'active' if request.endpoint == 'game.leaderboard' }}">👑 Топ игроков</a>
-      <a href="{{ url_for('game.manager_game_stats') }}" class="nav-item {{ 'active' if request.endpoint == 'game.manager_game_stats' }}">📊 Моя статистика</a>
+      <details class="nav-group" {% if request.endpoint and (request.endpoint.startswith(('leads.','submissions.','withdrawals.','payouts.','chat.','support_tickets.','referrals.','scripts.'))) %}open{% endif %}>
+        <summary class="nav-group-title">💼 Работа с лидами</summary>
+        <a href="{{ url_for('leads.index') }}" class="nav-item {{ 'active' if request.endpoint == 'leads.index' }}">📋 Лиды</a>
+        <a href="{{ url_for('submissions.index') }}" class="nav-item {{ 'active' if request.endpoint == 'submissions.index' }}">📸 Заявки</a>
+        <a href="{{ url_for('withdrawals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'withdrawals.index' }}">💰 Выводы</a>
+        <a href="{{ url_for('payouts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'payouts.index' }}">📜 Выплаты</a>
+        <a href="{{ url_for('chat.index') }}" class="nav-item {{ 'active' if request.endpoint == 'chat.index' }}">
+          💬 Чат {% if chat_unread %}<span class="badge-count">{{ chat_unread }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('support_tickets.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('support_tickets.') }}">🎫 Тикеты</a>
+        <a href="{{ url_for('referrals.index') }}" class="nav-item {{ 'active' if request.endpoint == 'referrals.index' }}">🤝 Рефералы</a>
+        <a href="{{ url_for('scripts.index') }}" class="nav-item {{ 'active' if request.endpoint == 'scripts.index' }}">📝 Скрипты</a>
+      </details>
+
+      <details class="nav-group" {% if request.endpoint and (request.endpoint.startswith(('contest.','advent_calendar.','wheel.','puzzle.','achievements.','simulator.','rating.','game.')) or request.endpoint == 'admin.top_managers') %}open{% endif %}>
+        <summary class="nav-group-title">🎮 Геймификация</summary>
+        <a href="{{ url_for('contest.index') }}" class="nav-item {{ 'active' if request.endpoint == 'contest.index' }}">🏆 Конкурс</a>
+        <a href="{{ url_for('advent_calendar.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('advent_calendar.') }}">🗓️ Календарь</a>
+        <a href="{{ url_for('wheel.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('wheel.') }}">🎡 Колесо призов</a>
+        <a href="{{ url_for('puzzle.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('puzzle.') }}">🧩 Пазл</a>
+        <a href="{{ url_for('achievements.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('achievements.') }}">🏆 Достижения</a>
+        <a href="{{ url_for('simulator.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('simulator.') }}">🎯 Тренажёр</a>
+        <a href="{{ url_for('rating.index') }}" class="nav-item {{ 'active' if request.endpoint == 'rating.index' }}">🏆 Рейтинг</a>
+        <a href="{{ url_for('admin.top_managers') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.top_managers' }}">🏆 Топ менеджеров</a>
+        <a href="{{ url_for('game.leaderboard') }}" class="nav-item {{ 'active' if request.endpoint == 'game.leaderboard' }}">👑 Топ игроков</a>
+        <a href="{{ url_for('game.manager_game_stats') }}" class="nav-item {{ 'active' if request.endpoint == 'game.manager_game_stats' }}">📊 Моя статистика</a>
+      </details>
+
       {% if current_manager.role == 'admin' %}
-      <a href="{{ url_for('managers.index') }}" class="nav-item {{ 'active' if request.endpoint == 'managers.index' }}">👥 Менеджеры</a>
-      <a href="{{ url_for('journal.index') }}" class="nav-item {{ 'active' if request.endpoint == 'journal.index' }}">📜 Журнал</a>
-      <a href="{{ url_for('admin.panel') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.panel' }}">⚙️ Админ-панель</a>
-      <a href="{{ url_for('admin.messaging') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.messaging' }}">📢 Рассылка</a>
-      <a href="{{ url_for('db_export.backups_list') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('db_export.') }}">💾 Бэкапы</a>
+      <details class="nav-group" {% if request.endpoint and (request.endpoint.startswith(('managers.','journal.','db_export.','funnel.','risk.','totp_setup.')) or (request.endpoint.startswith('admin.') and request.endpoint != 'admin.top_managers')) %}open{% endif %}>
+        <summary class="nav-group-title">⚙️ Админ-инструменты</summary>
+        <a href="{{ url_for('managers.index') }}" class="nav-item {{ 'active' if request.endpoint == 'managers.index' }}">👥 Менеджеры</a>
+        <a href="{{ url_for('journal.index') }}" class="nav-item {{ 'active' if request.endpoint == 'journal.index' }}">📜 Журнал</a>
+        <a href="{{ url_for('admin.panel') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.panel' }}">⚙️ Админ-панель</a>
+        <a href="{{ url_for('admin.messaging') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.messaging' }}">📢 Рассылка</a>
+        <a href="{{ url_for('db_export.backups_list') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('db_export.') }}">💾 Бэкапы</a>
+        <a href="{{ url_for('funnel.index') }}" class="nav-item {{ 'active' if request.endpoint == 'funnel.index' }}">📊 Воронка</a>
+        <a href="{{ url_for('risk.index') }}" class="nav-item {{ 'active' if request.endpoint == 'risk.index' }}">🚨 Риски</a>
+        <a href="{{ url_for('admin.gdpr_erase_form') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('admin.gdpr_erase') }}">🗑️ Удаление 152-ФЗ</a>
+        <a href="{{ url_for('totp_setup.index') }}" class="nav-item {{ 'active' if request.endpoint and request.endpoint.startswith('totp_setup.') }}">🔐 Двухфакторная (2FA)</a>
+      </details>
       {% endif %}
     </nav>
     <div class="nav nav-bottom">
@@ -72,6 +90,17 @@
       <a href="{{ url_for('notifications.index') }}" class="nav-item">
         🔔 Уведомления {% if unread_notifications %}<span class="badge-count">{{ unread_notifications }}</span>{% endif %}
       </a>
+      {% if current_manager %}
+      <button type="button" id="push-subscribe-btn" class="nav-item" style="text-align:left; border:none; background:none; width:100%; cursor:pointer; display:none;">
+        🔕 Включить push-уведомления
+      </button>
+      <form method="post" action="{{ url_for('profile.toggle_dark_mode') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="nav-item" style="text-align:left; border:none; background:none; width:100%; cursor:pointer;">
+          {{ '☀️ Светлая тема' if current_manager.dark_mode else '🌙 Тёмная тема' }}
+        </button>
+      </form>
+      {% endif %}
       <a href="{{ url_for('profile.settings') }}" class="nav-item">👤 Мой профиль</a>
       <a href="{{ url_for('auth.logout') }}" class="nav-item">🚪 Выйти</a>
     </div>
@@ -331,6 +360,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+</script>
+
+<script>
+(function () {
+  const btn = document.getElementById('push-subscribe-btn');
+  if (!btn || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
+
+  async function checkAndShowButton() {
+    const reg = await navigator.serviceWorker.register('/static/service-worker.js').catch(() => null);
+    if (!reg) return;
+    const existing = await reg.pushManager.getSubscription();
+    btn.style.display = 'block';
+    btn.textContent = existing ? '🔔 Push включены' : '🔕 Включить push-уведомления';
+  }
+
+  btn.addEventListener('click', async () => {
+    const keyResp = await fetch('/push/vapid-public-key').then(r => r.json()).catch(() => null);
+    if (!keyResp || !keyResp.key) {
+      alert('Push не настроен на сервере (нет VAPID-ключей в .env).');
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyResp.key),
+      }).catch(() => null);
+    }
+    if (sub) {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      await fetch('/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify(sub),
+      });
+      btn.textContent = '🔔 Push включены';
+    }
+  });
+
+  checkAndShowButton();
+})();
 </script>
 
 {% else %}
